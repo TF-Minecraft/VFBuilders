@@ -31,6 +31,8 @@ import net.tfminecraft.vehicleframework.vehicles.component.VehicleComponent;
 import net.tfminecraft.vehicleframework.weapons.Weapon;
 
 public class InventoryManager {
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     public void categoryView(Inventory i, Player p, ActiveStation s, boolean open) {
 		if(open) {
 			i = VFBuilders.plugin.getServer().createInventory(new VFBHolder(s, VFBGUI.CATEGORY), 27, "§7Select Category");
@@ -57,6 +59,8 @@ public class InventoryManager {
 			p.openInventory(i);
 		}
 	} 
+	// Keep the existing legacy text representation, formatting, and exact-string comparisons.
+	@SuppressWarnings("deprecation")
 	public void blueprintView(Inventory i, Player p, BlueprintCategory cat, ActiveStation s, boolean open) {
 		if(open) {
 			i = VFBuilders.plugin.getServer().createInventory(new VFBHolder(s, VFBGUI.BLUEPRINT), 27, "§7Select Blueprint");
@@ -85,6 +89,8 @@ public class InventoryManager {
 		}
 	} 
 
+	// Keep the existing legacy text representation, formatting, and exact-string comparisons.
+	@SuppressWarnings("deprecation")
 	private ItemStack createBackButton() {
 		ItemStack i = new ItemStack(Material.BARRIER, 1);
 		ItemMeta m = i.getItemMeta();
@@ -93,6 +99,8 @@ public class InventoryManager {
 		return i;
 	}
 
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     private ItemStack getCategoryItem(Player p, BlueprintCategory cat) {
 		ItemStack i = new ItemStack(cat.getItem());
 		ItemMeta m = i.getItemMeta();
@@ -106,6 +114,8 @@ public class InventoryManager {
 		return i;
 	}
 
+	// Keep the existing legacy text representation, formatting, and exact-string comparisons.
+	@SuppressWarnings("deprecation")
 	private ItemStack getBlueprintItem(Blueprint b) {
 		ItemCreator creator = TLibs.getItemAPI().getCreator();
 		ItemStack i = new ItemStack(b.getItem());
