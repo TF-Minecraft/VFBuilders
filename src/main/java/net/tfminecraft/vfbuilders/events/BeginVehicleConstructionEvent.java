@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.events;
+package net.tfminecraft.vfbuilders.events;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -6,8 +6,8 @@ import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
-import net.tfminecraft.VFBuilders.core.ActiveStation;
-import net.tfminecraft.VFBuilders.core.Blueprint;
+import net.tfminecraft.vfbuilders.core.ActiveStation;
+import net.tfminecraft.vfbuilders.core.Blueprint;
 
 public class BeginVehicleConstructionEvent extends Event implements Cancellable {
     private static final HandlerList HANDLERS = new HandlerList();

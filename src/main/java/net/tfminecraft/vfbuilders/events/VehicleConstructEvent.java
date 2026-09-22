@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.events;
+package net.tfminecraft.vfbuilders.events;
 
 import java.util.UUID;
 
@@ -8,9 +8,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
-import net.tfminecraft.VFBuilders.core.ActiveStation;
-import net.tfminecraft.VFBuilders.core.Blueprint;
-import net.tfminecraft.VehicleFramework.Vehicles.ActiveVehicle;
+import net.tfminecraft.vfbuilders.core.ActiveStation;
+import net.tfminecraft.vfbuilders.core.Blueprint;
+import net.tfminecraft.vehicleframework.vehicles.ActiveVehicle;
 
 public class VehicleConstructEvent extends Event {
     private static final HandlerList HANDLERS = new HandlerList();

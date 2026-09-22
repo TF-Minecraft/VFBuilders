@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.display;
+package net.tfminecraft.vfbuilders.display;
 
 import java.util.UUID;
 
@@ -14,8 +14,8 @@ import org.bukkit.entity.TextDisplay;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
-import me.Plugins.TLibs.Utils.TimeFormatter;
-import net.tfminecraft.VFBuilders.VFBuilders;
+import net.tfminecraft.tlibs.utils.TimeFormatter;
+import net.tfminecraft.vfbuilders.VFBuilders;
 
 public final class StationTimerDisplay {
 

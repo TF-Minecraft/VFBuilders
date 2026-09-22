@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.loaders;
+package net.tfminecraft.vfbuilders.loaders;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,13 +11,13 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-import me.Plugins.TLibs.Interface.LoaderInterface;
-import net.tfminecraft.VFBuilders.core.BlueprintCategory;
+import net.tfminecraft.tlibs.interfaces.LoaderInterface;
+import net.tfminecraft.vfbuilders.core.Station;
 
-public class CategoryLoader implements LoaderInterface{
-	public static HashMap<String, BlueprintCategory> map = new HashMap<>();
+public class StationLoader implements LoaderInterface{
+	public static HashMap<String, Station> map = new HashMap<>();
 	
-	public static HashMap<String, BlueprintCategory> get(){
+	public static HashMap<String, Station> get(){
 		return map;
 	}
 	
@@ -35,12 +35,12 @@ public class CategoryLoader implements LoaderInterface{
 		List<String> list = new ArrayList<String>(set);
 		
 		for(String key : list) {
-			BlueprintCategory o = new BlueprintCategory(key, config.getConfigurationSection(key));
+			Station o = new Station(key, config.getConfigurationSection(key));
 			map.put(key, o);
 		}
 	}
 
-	public static BlueprintCategory getByString(String id) {
+	public static Station getByString(String id) {
 		if(map.containsKey(id)) return map.get(id);
 		return null;
 	}

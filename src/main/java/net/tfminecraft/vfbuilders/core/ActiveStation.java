@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.core;
+package net.tfminecraft.vfbuilders.core;
 
 import java.util.UUID;
 
@@ -8,14 +8,14 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.TextDisplay;
 
-import net.tfminecraft.VFBuilders.display.StationTimerDisplay;
-import net.tfminecraft.VFBuilders.events.VehicleConstructEvent;
-import net.tfminecraft.VFBuilders.loaders.BlueprintLoader;
-import net.tfminecraft.VFBuilders.loaders.StationLoader;
-import net.tfminecraft.VehicleFramework.VFLogger;
-import net.tfminecraft.VehicleFramework.VehicleFramework;
-import net.tfminecraft.VehicleFramework.Managers.VehicleManager;
-import net.tfminecraft.VehicleFramework.Vehicles.ActiveVehicle;
+import net.tfminecraft.vfbuilders.display.StationTimerDisplay;
+import net.tfminecraft.vfbuilders.events.VehicleConstructEvent;
+import net.tfminecraft.vfbuilders.loaders.BlueprintLoader;
+import net.tfminecraft.vfbuilders.loaders.StationLoader;
+import net.tfminecraft.vehicleframework.VFLogger;
+import net.tfminecraft.vehicleframework.VehicleFramework;
+import net.tfminecraft.vehicleframework.managers.VehicleManager;
+import net.tfminecraft.vehicleframework.vehicles.ActiveVehicle;
 
 public class ActiveStation {
     private UUID id;

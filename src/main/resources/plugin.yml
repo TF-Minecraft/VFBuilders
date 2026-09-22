@@ -1,4 +1,4 @@
-main: net.tfminecraft.VFBuilders.VFBuilders
+main: net.tfminecraft.vfbuilders.VFBuilders
 api-version: '1.21.10'
 name: VFBuilders
 version: ${project.version}

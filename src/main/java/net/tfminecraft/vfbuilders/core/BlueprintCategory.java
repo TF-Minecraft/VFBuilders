@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.core;
+package net.tfminecraft.vfbuilders.core;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,8 +7,8 @@ import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.inventory.ItemStack;
 
-import me.Plugins.TLibs.TLibs;
-import net.tfminecraft.VFBuilders.loaders.StationLoader;
+import net.tfminecraft.tlibs.TLibs;
+import net.tfminecraft.vfbuilders.loaders.StationLoader;
 
 public class BlueprintCategory {
     private String id;

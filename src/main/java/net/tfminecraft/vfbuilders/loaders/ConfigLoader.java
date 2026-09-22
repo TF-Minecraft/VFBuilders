@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.loaders;
+package net.tfminecraft.vfbuilders.loaders;
 
 import java.io.File;
 import java.io.IOException;
@@ -7,9 +7,9 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-import net.tfminecraft.VFBuilders.Cache;
-import net.tfminecraft.VFBuilders.VFBuilders;
-import net.tfminecraft.VehicleFramework.VFLogger;
+import net.tfminecraft.vfbuilders.Cache;
+import net.tfminecraft.vfbuilders.VFBuilders;
+import net.tfminecraft.vehicleframework.VFLogger;
 
 public class ConfigLoader {
 
