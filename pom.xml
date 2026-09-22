@@ -6,11 +6,11 @@
 
     <groupId>net.tfminecraft</groupId>
     <artifactId>vfbuilders</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 
     <properties>
-        <vehicleframework.version>1.1.12</vehicleframework.version>
-        <tlibs.version>1.1.0</tlibs.version>
+        <vehicleframework.version>1.1.13</vehicleframework.version>
+        <tlibs.version>1.1.1</tlibs.version>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
