@@ -19,23 +19,20 @@
         <dependency>
             <groupId>local</groupId>
             <artifactId>json-simple</artifactId>
-            <version>1.1</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/json-simple-1.1.jar</systemPath>
+            <version>1.1-tfmc-2d9484f4c649</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>gson</artifactId>
-            <version>2.10.1</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/gson-2.10.1.jar</systemPath>
+            <version>2.10.1-tfmc-4241c14a7727</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>ItemsAdder</artifactId>
-            <version>3.5.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/ItemsAdder_3.5.0-r2.jar</systemPath>
+            <version>3.5.0-tfmc-0116d714822b</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.tfminecraft</groupId>
