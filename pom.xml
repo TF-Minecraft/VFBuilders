@@ -12,10 +12,6 @@
         <tlibs.version>1.1.0</tlibs.version>
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <tfmc.refs>D:/Documents/TFMC/ReferenceLibs</tfmc.refs>
-        <tfmc.builds>D:/Documents/TFMC/Builds/VFBuilders</tfmc.builds>
-
-        <tfmc.vf>D:/Documents/TFMC/Builds/VehicleFramework</tfmc.vf>
     </properties>
 
     <dependencies>
@@ -24,35 +20,35 @@
             <artifactId>json-simple</artifactId>
             <version>1.1</version>
             <scope>system</scope>
-            <systemPath>${tfmc.refs}/json-simple-1.1.jar</systemPath>
+            <systemPath>${project.basedir}/libs/json-simple-1.1.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
             <scope>system</scope>
-            <systemPath>${tfmc.refs}/gson-2.10.1.jar</systemPath>
+            <systemPath>${project.basedir}/libs/gson-2.10.1.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>ItemsAdder</artifactId>
             <version>3.5.0</version>
             <scope>system</scope>
-            <systemPath>${tfmc.refs}/ItemsAdder_3.5.0-r2.jar</systemPath>
+            <systemPath>${project.basedir}/libs/ItemsAdder_3.5.0-r2.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>VehicleFramework</artifactId>
-            <version>1.1.11</version>
+            <version>1.1.12</version>
             <scope>system</scope>
-            <systemPath>${tfmc.vf}/vehicleframework-1.1.11.jar</systemPath>
+            <systemPath>${project.basedir}/libs/vehicleframework-1.1.12.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>spigot-api</artifactId>
             <version>1.21.8</version>
             <scope>system</scope>
-            <systemPath>${tfmc.refs}/spigot-api.jar</systemPath>
+            <systemPath>${project.basedir}/libs/spigot-api.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>me.plugins</groupId>
@@ -67,29 +63,23 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes><include>plugin.yml</include></includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes><exclude>plugin.yml</exclude></excludes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.14.1</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <version>3.1.0</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals><goal>run</goal></goals>
-                        <configuration>
-                            <target>
-                                <mkdir dir="${tfmc.builds}"/>
-                                <copy file="${project.build.directory}/${project.build.finalName}.jar"
-                                    tofile="${tfmc.builds}/${project.build.finalName}.jar"/>
-                            </target>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>

@@ -1,7 +1,7 @@
 main: net.tfminecraft.VFBuilders.VFBuilders
 api-version: 1.20
 name: VFBuilders
-version: 1.0
+version: ${project.version}
 author: Drefvelin
 folia-supported: true
 
