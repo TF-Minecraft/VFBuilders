@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.core;
+package net.tfminecraft.vfbuilders.core;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Player;

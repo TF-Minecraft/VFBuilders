@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.managers;
+package net.tfminecraft.vfbuilders.managers;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +9,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
-import net.tfminecraft.VFBuilders.VFBuilders;
+import net.tfminecraft.vfbuilders.VFBuilders;
 
 public class CommandManager implements CommandExecutor, TabCompleter {
 

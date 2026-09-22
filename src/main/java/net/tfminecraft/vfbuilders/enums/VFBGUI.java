@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.enums;
+package net.tfminecraft.vfbuilders.enums;
 
 public enum VFBGUI {
     CATEGORY,

@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.data;
+package net.tfminecraft.vfbuilders.data;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -7,10 +7,10 @@ import com.google.gson.reflect.TypeToken;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 
-import net.tfminecraft.VFBuilders.VFBuilders;
-import net.tfminecraft.VFBuilders.core.ActiveStation;
-import net.tfminecraft.VFBuilders.core.Station;
-import net.tfminecraft.VFBuilders.loaders.StationLoader;
+import net.tfminecraft.vfbuilders.VFBuilders;
+import net.tfminecraft.vfbuilders.core.ActiveStation;
+import net.tfminecraft.vfbuilders.core.Station;
+import net.tfminecraft.vfbuilders.loaders.StationLoader;
 
 import java.io.*;
 import java.lang.reflect.Type;

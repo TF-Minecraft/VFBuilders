@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.core;
+package net.tfminecraft.vfbuilders.core;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -11,14 +11,14 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import me.Plugins.TLibs.TLibs;
-import me.Plugins.TLibs.Objects.API.ItemAPI;
-import me.Plugins.TLibs.Utils.TimeFormatter;
-import net.tfminecraft.VFBuilders.VFBuilders;
-import net.tfminecraft.VFBuilders.loaders.CategoryLoader;
-import net.tfminecraft.VehicleFramework.VFLogger;
-import net.tfminecraft.VehicleFramework.Loaders.VehicleLoader;
-import net.tfminecraft.VehicleFramework.Vehicles.Vehicle;
+import net.tfminecraft.tlibs.TLibs;
+import net.tfminecraft.tlibs.objects.api.ItemAPI;
+import net.tfminecraft.tlibs.utils.TimeFormatter;
+import net.tfminecraft.vfbuilders.VFBuilders;
+import net.tfminecraft.vfbuilders.loaders.CategoryLoader;
+import net.tfminecraft.vehicleframework.VFLogger;
+import net.tfminecraft.vehicleframework.loaders.VehicleLoader;
+import net.tfminecraft.vehicleframework.vehicles.Vehicle;
 
 public class Blueprint {
     private ItemAPI api = TLibs.getItemAPI();

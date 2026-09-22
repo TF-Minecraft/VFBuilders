@@ -1,16 +1,16 @@
-package net.tfminecraft.VFBuilders;
+package net.tfminecraft.vfbuilders;
 
 import java.io.File;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
-import net.tfminecraft.VFBuilders.loaders.BlueprintLoader;
-import net.tfminecraft.VFBuilders.loaders.CategoryLoader;
-import net.tfminecraft.VFBuilders.loaders.ConfigLoader;
-import net.tfminecraft.VFBuilders.loaders.StationLoader;
-import net.tfminecraft.VFBuilders.managers.CommandManager;
-import net.tfminecraft.VFBuilders.managers.StationManager;
-import net.tfminecraft.VehicleFramework.VFLogger;
+import net.tfminecraft.vfbuilders.loaders.BlueprintLoader;
+import net.tfminecraft.vfbuilders.loaders.CategoryLoader;
+import net.tfminecraft.vfbuilders.loaders.ConfigLoader;
+import net.tfminecraft.vfbuilders.loaders.StationLoader;
+import net.tfminecraft.vfbuilders.managers.CommandManager;
+import net.tfminecraft.vfbuilders.managers.StationManager;
+import net.tfminecraft.vehicleframework.VFLogger;
 
 public class VFBuilders extends JavaPlugin {
     public static VFBuilders plugin;

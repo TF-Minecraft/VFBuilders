@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.loaders;
+package net.tfminecraft.vfbuilders.loaders;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,8 +11,8 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-import me.Plugins.TLibs.Interface.LoaderInterface;
-import net.tfminecraft.VFBuilders.core.Blueprint;
+import net.tfminecraft.tlibs.interfaces.LoaderInterface;
+import net.tfminecraft.vfbuilders.core.Blueprint;
 
 public class BlueprintLoader implements LoaderInterface{
 	public static HashMap<String, Blueprint> map = new HashMap<>();

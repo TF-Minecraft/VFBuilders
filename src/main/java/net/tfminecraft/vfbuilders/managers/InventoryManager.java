@@ -1,4 +1,4 @@
-package net.tfminecraft.VFBuilders.managers;
+package net.tfminecraft.vfbuilders.managers;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,21 +14,21 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
-import me.Plugins.TLibs.TLibs;
-import me.Plugins.TLibs.Objects.TLibAPI;
-import me.Plugins.TLibs.Objects.API.SubAPI.ItemCreator;
-import me.Plugins.TLibs.Objects.API.SubAPI.StringFormatter;
-import me.Plugins.TLibs.Utils.TimeFormatter;
-import net.tfminecraft.VFBuilders.VFBuilders;
-import net.tfminecraft.VFBuilders.core.ActiveStation;
-import net.tfminecraft.VFBuilders.core.Blueprint;
-import net.tfminecraft.VFBuilders.core.BlueprintCategory;
-import net.tfminecraft.VFBuilders.enums.VFBGUI;
-import net.tfminecraft.VFBuilders.holders.VFBHolder;
-import net.tfminecraft.VFBuilders.loaders.CategoryLoader;
-import net.tfminecraft.VehicleFramework.Vehicles.Vehicle;
-import net.tfminecraft.VehicleFramework.Vehicles.Component.VehicleComponent;
-import net.tfminecraft.VehicleFramework.Weapons.Weapon;
+import net.tfminecraft.tlibs.TLibs;
+import net.tfminecraft.tlibs.objects.TLibAPI;
+import net.tfminecraft.tlibs.objects.api.subapi.ItemCreator;
+import net.tfminecraft.tlibs.objects.api.subapi.StringFormatter;
+import net.tfminecraft.tlibs.utils.TimeFormatter;
+import net.tfminecraft.vfbuilders.VFBuilders;
+import net.tfminecraft.vfbuilders.core.ActiveStation;
+import net.tfminecraft.vfbuilders.core.Blueprint;
+import net.tfminecraft.vfbuilders.core.BlueprintCategory;
+import net.tfminecraft.vfbuilders.enums.VFBGUI;
+import net.tfminecraft.vfbuilders.holders.VFBHolder;
+import net.tfminecraft.vfbuilders.loaders.CategoryLoader;
+import net.tfminecraft.vehicleframework.vehicles.Vehicle;
+import net.tfminecraft.vehicleframework.vehicles.component.VehicleComponent;
+import net.tfminecraft.vehicleframework.weapons.Weapon;
 
 public class InventoryManager {
     public void categoryView(Inventory i, Player p, ActiveStation s, boolean open) {

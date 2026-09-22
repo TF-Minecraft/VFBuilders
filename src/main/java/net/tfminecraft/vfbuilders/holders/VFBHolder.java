@@ -1,10 +1,10 @@
-package net.tfminecraft.VFBuilders.holders;
+package net.tfminecraft.vfbuilders.holders;
 
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 
-import net.tfminecraft.VFBuilders.core.ActiveStation;
-import net.tfminecraft.VFBuilders.enums.VFBGUI;
+import net.tfminecraft.vfbuilders.core.ActiveStation;
+import net.tfminecraft.vfbuilders.enums.VFBGUI;
 
 public class VFBHolder implements InventoryHolder {
     private final ActiveStation station;
