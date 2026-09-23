@@ -232,6 +232,8 @@ public class StationManager implements Listener {
         }
     }
 
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     @EventHandler
     public void onPlayerLeftClick(PlayerInteractEvent e) {
         if (!e.getAction().name().contains("LEFT_CLICK")) return;

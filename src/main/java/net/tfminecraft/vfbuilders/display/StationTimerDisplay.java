@@ -67,6 +67,8 @@ public final class StationTimerDisplay {
 		return world.spawn(anchor, TextDisplay.class, display -> apply(display, anchor, text, key));
 	}
 
+	// Keep the existing legacy text representation, formatting, and exact-string comparisons.
+	@SuppressWarnings("deprecation")
 	public static void update(TextDisplay display, Location stationBlock, String text) {
 		if (display == null || display.isDead() || stationBlock == null || text == null) {
 			return;
@@ -175,6 +177,8 @@ public final class StationTimerDisplay {
 		purgeLegacyArmorStands(stationBlock, DEFAULT_PURGE_RADIUS);
 	}
 
+	// Keep the existing legacy text representation, formatting, and exact-string comparisons.
+	@SuppressWarnings("deprecation")
 	private static void apply(TextDisplay display, Location anchor, String text, String blockKey) {
 		display.setText(text);
 		display.setBillboard(Display.Billboard.CENTER);
