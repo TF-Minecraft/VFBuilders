@@ -74,6 +74,7 @@ public class ActiveStation {
         blueprint = b;
         timeLeft = b.getTime();
         this.constructorUuid = constructorUuid;
+        freezeReason = null;
         ensureDisplay();
     }
 
@@ -148,6 +149,7 @@ public class ActiveStation {
         spawnLoc = null;
         blueprint = null;
         constructorUuid = null;
+        freezeReason = null;
         timeLeft = 0;
     }
 
