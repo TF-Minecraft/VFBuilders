@@ -4,7 +4,8 @@ import java.util.UUID;
 
 /**
  * Lets another plugin pause station countdowns. Register an implementation with
- * Bukkit's ServicesManager; every registration is asked once per station per second.
+ * Bukkit's ServicesManager. Each second, registrations are asked in turn for every
+ * station still counting down, stopping at the first one that returns a reason.
  */
 public interface ConstructionFreeze {
 
