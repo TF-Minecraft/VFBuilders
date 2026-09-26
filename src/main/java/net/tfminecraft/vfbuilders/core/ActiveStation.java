@@ -8,6 +8,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.TextDisplay;
 
+import net.tfminecraft.vfbuilders.api.ConstructionFreezes;
 import net.tfminecraft.vfbuilders.display.StationTimerDisplay;
 import net.tfminecraft.vfbuilders.events.VehicleConstructEvent;
 import net.tfminecraft.vfbuilders.loaders.BlueprintLoader;
@@ -28,6 +29,7 @@ public class ActiveStation {
     private UUID constructorUuid;
 
     private TextDisplay timerDisplay;
+    private String freezeReason;
 
     
     public ActiveStation(Location loc, Station stored) {
@@ -80,6 +82,14 @@ public class ActiveStation {
             removeHolograms();
             return true;
         }
+
+        String reason = ConstructionFreezes.reason(constructorUuid);
+        if (reason != null) {
+            freezeReason = reason;
+            ensureDisplay();
+            return false;
+        }
+        freezeReason = null;
 
         timeLeft--;
         ensureDisplay();
@@ -220,7 +230,7 @@ public class ActiveStation {
         StationTimerDisplay.purgeAtStationBlock(loc);
         StationTimerDisplay.purgeLegacyArmorStands(loc);
 
-        String text = StationTimerDisplay.formatText(blueprint.getVehicle().getName(), timeLeft);
+        String text = StationTimerDisplay.formatText(blueprint.getVehicle().getName(), timeLeft, freezeReason);
         if (timerDisplay == null || timerDisplay.isDead()) {
             timerDisplay = StationTimerDisplay.spawn(loc.getWorld(), loc, text);
         } else {

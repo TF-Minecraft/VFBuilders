@@ -44,9 +44,17 @@ public final class StationTimerDisplay {
 	}
 
 	public static String formatText(String vehicleName, int timeLeftSeconds) {
+		return formatText(vehicleName, timeLeftSeconds, null);
+	}
+
+	public static String formatText(String vehicleName, int timeLeftSeconds, String freezeReason) {
 		String name = vehicleName == null ? "Vehicle" : vehicleName;
-		return "§eConstructing §6" + name
+		String text = "§eConstructing §6" + name
 				+ "\n§7Time: §f" + TimeFormatter.formatTime(timeLeftSeconds);
+		if (freezeReason != null) {
+			text += "\n§cPaused: §7" + freezeReason;
+		}
+		return text;
 	}
 
 	public static TextDisplay spawn(World world, Location stationBlock, String text) {
