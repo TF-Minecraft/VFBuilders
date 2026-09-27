@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 
@@ -15,7 +16,8 @@ import net.tfminecraft.tlibs.interfaces.LoaderInterface;
 import net.tfminecraft.vfbuilders.core.BlueprintCategory;
 
 public class CategoryLoader implements LoaderInterface{
-	public static HashMap<String, BlueprintCategory> map = new HashMap<>();
+	// Linked so menus list categories in config order.
+	public static HashMap<String, BlueprintCategory> map = new LinkedHashMap<>();
 	
 	public static HashMap<String, BlueprintCategory> get(){
 		return map;
