@@ -17,6 +17,7 @@ public class BeginVehicleConstructionEvent extends Event implements Cancellable 
     private final ActiveStation station;
     private final Location spawnLocation;
     private boolean cancelled;
+    private boolean keepPlacement;
 
     public BeginVehicleConstructionEvent(
             Player constructor,
@@ -54,6 +55,19 @@ public class BeginVehicleConstructionEvent extends Event implements Cancellable 
     @Override
     public void setCancelled(boolean cancelled) {
         this.cancelled = cancelled;
+    }
+
+    /**
+     * Whether a cancelled event leaves the player's placement active, so another
+     * left-click within the placement window fires this event again. Listeners use
+     * this to ask for a confirming second click.
+     */
+    public boolean isKeepPlacement() {
+        return keepPlacement;
+    }
+
+    public void setKeepPlacement(boolean keepPlacement) {
+        this.keepPlacement = keepPlacement;
     }
 
     @Override

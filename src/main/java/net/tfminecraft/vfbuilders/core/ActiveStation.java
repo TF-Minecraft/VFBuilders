@@ -11,6 +11,7 @@ import org.bukkit.entity.TextDisplay;
 import net.tfminecraft.vfbuilders.api.ConstructionFreezes;
 import net.tfminecraft.vfbuilders.display.StationTimerDisplay;
 import net.tfminecraft.vfbuilders.events.VehicleConstructEvent;
+import net.tfminecraft.vfbuilders.events.VehicleConstructionCancelEvent;
 import net.tfminecraft.vfbuilders.loaders.BlueprintLoader;
 import net.tfminecraft.vfbuilders.loaders.StationLoader;
 import net.tfminecraft.vehicleframework.VFLogger;
@@ -144,6 +145,8 @@ public class ActiveStation {
     public void cancelConstruction() {
         if (blueprint != null) {
             blueprint.drop(loc.clone().add(0.5, 1, 0.5));
+            Bukkit.getPluginManager().callEvent(
+                new VehicleConstructionCancelEvent(constructorUuid, blueprint, this));
         }
         removeHolograms();
         spawnLoc = null;

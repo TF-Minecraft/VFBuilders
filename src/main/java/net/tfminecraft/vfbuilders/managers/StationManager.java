@@ -267,7 +267,9 @@ public class StationManager implements Listener {
             p, blueprint, station, clickLoc);
         Bukkit.getPluginManager().callEvent(beginEvent);
         if (beginEvent.isCancelled()) {
-            activePlacements.remove(uuid);
+            if (!beginEvent.isKeepPlacement()) {
+                activePlacements.remove(uuid);
+            }
             return;
         }
 
