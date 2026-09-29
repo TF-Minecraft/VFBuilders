@@ -16,7 +16,7 @@ class DatabaseTest {
   @Test
   void savesRestoresLegacyAndOwnedProjectsAndHandlesIoFailures() throws Exception {
     var server = MockBukkit.mock();
-    Path temp = Files.createTempDirectory("vfbuilders-database-");
+    Path temp = DatabaseFixture.folder();
     try {
       VFBuilders.plugin = mock(VFBuilders.class);
       when(VFBuilders.plugin.getDataFolder()).thenReturn(temp.toFile());

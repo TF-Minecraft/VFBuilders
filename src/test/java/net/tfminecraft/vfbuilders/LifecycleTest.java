@@ -19,8 +19,7 @@ class LifecycleTest {
     // The persistence test exercises real files; lifecycle isolates that boundary because its
     // legacy path is static.
     VFBuilders.plugin = mock(VFBuilders.class);
-    when(VFBuilders.plugin.getDataFolder())
-        .thenReturn(Files.createTempDirectory("vfb-bootstrap-").toFile());
+    when(VFBuilders.plugin.getDataFolder()).thenReturn(DatabaseFixture.folder().toFile());
     try (var db = mockStatic(Database.class);
         var log = mockStatic(VFLogger.class)) {
       db.when(Database::loadStations).thenReturn(new HashMap<>());

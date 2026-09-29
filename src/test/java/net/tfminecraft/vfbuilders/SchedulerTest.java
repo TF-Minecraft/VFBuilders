@@ -22,7 +22,7 @@ class SchedulerTest {
   void ticksPauseIncompleteWorkFinishReadyWorkAndRefreshOnlyLoadedChunks() throws Exception {
     var server = MockBukkit.mock();
     VFBuilders.plugin = mock(VFBuilders.class);
-    when(VFBuilders.plugin.getDataFolder()).thenReturn(temp.toFile());
+    when(VFBuilders.plugin.getDataFolder()).thenReturn(DatabaseFixture.folder().toFile());
     when(VFBuilders.plugin.isEnabled()).thenReturn(true);
     when(VFBuilders.plugin.getName()).thenReturn("VFBuilders");
     try (var db = mockStatic(Database.class);
