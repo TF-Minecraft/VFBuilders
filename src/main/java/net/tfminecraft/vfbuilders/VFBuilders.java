@@ -79,7 +79,7 @@ public class VFBuilders extends JavaPlugin {
 		}
 		VFLogger.info(this, "Loading blueprints...");
 		for (File file : files) {
-			if (file != null && file.isFile()) {
+			if (file.isFile()) {
 				blueprintLoader.load(file);
 			}
 		}

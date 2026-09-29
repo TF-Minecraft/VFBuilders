@@ -137,9 +137,6 @@ public class StationManager implements Listener {
 
     private Iterable<ActiveStation> stationsInChunk(Chunk chunk) {
         List<ActiveStation> inChunk = new ArrayList<>();
-        if (chunk == null) {
-            return inChunk;
-        }
         int chunkX = chunk.getX();
         int chunkZ = chunk.getZ();
         for (ActiveStation station : stations.values()) {
@@ -247,7 +244,8 @@ public class StationManager implements Listener {
         Location stationLoc = placement.getStation().getLocation();
         Location clickLoc = p.getLocation();
 
-        if (clickLoc.distanceSquared(stationLoc) > Math.pow(Cache.constructionDistance, 2)) {
+        if (!java.util.Objects.equals(clickLoc.getWorld(), stationLoc.getWorld())
+                || clickLoc.distanceSquared(stationLoc) > Math.pow(Cache.constructionDistance, 2)) {
             p.sendMessage("§cToo far from the station! (max "+Cache.constructionDistance+" blocks)");
             return;
         }
@@ -295,7 +293,7 @@ public class StationManager implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                if (!activePlacements.containsKey(uuid)) {
+                if (activePlacements.get(uuid) != placement) {
                     cancel(); return;
                 }
                 if (placement.getStation().hasBlueprint()) {
@@ -303,7 +301,8 @@ public class StationManager implements Listener {
                     cancel(); return;
                 }
                 Location playerLoc = player.getLocation();
-                if (playerLoc.distanceSquared(stationLoc) > Math.pow(Cache.constructionDistance, 2)) return;
+                if (!java.util.Objects.equals(playerLoc.getWorld(), stationLoc.getWorld())
+                        || playerLoc.distanceSquared(stationLoc) > Math.pow(Cache.constructionDistance, 2)) return;
 
                 drawParticleLine(stationLoc.clone().add(0.5, 1, 0.5),
                                 playerLoc.clone().add(0, 1.5, 0));
@@ -314,7 +313,7 @@ public class StationManager implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                if (activePlacements.containsKey(uuid)) {
+                if (activePlacements.get(uuid) == placement) {
                     activePlacements.remove(uuid);
                     player.sendMessage("§cVehicle placement cancelled (timeout).");
                 }
@@ -353,6 +352,7 @@ public class StationManager implements Listener {
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent e) {
+        if (e.isCancelled()) return;
         Block block = e.getBlock();
         Location loc = block.getLocation();
 
@@ -363,6 +363,7 @@ public class StationManager implements Listener {
 
     @EventHandler
     public void onFurnitureBreak(FurnitureBreakEvent e) {
+        if (e.isCancelled()) return;
         Location loc = e.getBukkitEntity().getLocation().getBlock().getLocation();
 
         if (!stations.containsKey(loc)) return;

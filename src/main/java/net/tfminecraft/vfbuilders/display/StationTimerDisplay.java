@@ -65,13 +65,7 @@ public final class StationTimerDisplay {
 			return null;
 		}
 		Location anchor = displayAnchor(stationBlock);
-		if (anchor == null) {
-			return null;
-		}
 		String key = blockKey(stationBlock);
-		if (key == null) {
-			return null;
-		}
 		return world.spawn(anchor, TextDisplay.class, display -> apply(display, anchor, text, key));
 	}
 
@@ -82,7 +76,7 @@ public final class StationTimerDisplay {
 			return;
 		}
 		Location anchor = displayAnchor(stationBlock);
-		if (anchor == null || anchor.getWorld() == null) {
+		if (anchor.getWorld() == null) {
 			return;
 		}
 		display.teleport(anchor);
@@ -122,13 +116,7 @@ public final class StationTimerDisplay {
 			return;
 		}
 		String key = blockKey(stationBlock);
-		if (key == null) {
-			return;
-		}
 		Location anchor = displayAnchor(stationBlock);
-		if (anchor == null) {
-			return;
-		}
 		World world = stationBlock.getWorld();
 		int chunkX = stationBlock.getBlockX() >> 4;
 		int chunkZ = stationBlock.getBlockZ() >> 4;
@@ -158,9 +146,6 @@ public final class StationTimerDisplay {
 			return;
 		}
 		Location anchor = displayAnchor(stationBlock);
-		if (anchor == null) {
-			return;
-		}
 		World world = stationBlock.getWorld();
 		int chunkX = stationBlock.getBlockX() >> 4;
 		int chunkZ = stationBlock.getBlockZ() >> 4;
@@ -205,9 +190,6 @@ public final class StationTimerDisplay {
 	}
 
 	private static String getStationTimerTag(Entity entity) {
-		if (entity == null) {
-			return null;
-		}
 		PersistentDataContainer container = entity.getPersistentDataContainer();
 		return container.get(stationTimerKey(), PersistentDataType.STRING);
 	}
