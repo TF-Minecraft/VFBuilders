@@ -106,7 +106,7 @@ public class InventoryManager {
 		ItemMeta m = i.getItemMeta();
 		NamespacedKey key = new NamespacedKey(VFBuilders.plugin, "vfb_category_id");
 		m.getPersistentDataContainer().set(key, PersistentDataType.STRING, cat.getId());
-		List<String> lore = new ArrayList<>(m.getLore());
+		List<String> lore = m.hasLore() ? new ArrayList<>(m.getLore()) : new ArrayList<>();
 		lore.add(" ");
 		lore.add(StringFormatter.formatHex("#53db9c"+getBlueprintCount(p, cat)+" #ccbf8fBlueprints"));
 		m.setLore(lore);
@@ -124,7 +124,7 @@ public class InventoryManager {
 		m.setDisplayName(v.getName());
 		NamespacedKey key = new NamespacedKey(VFBuilders.plugin, "vfb_blueprint_id");
 		m.getPersistentDataContainer().set(key, PersistentDataType.STRING, b.getId());
-		List<String> lore = new ArrayList<>(m.getLore());
+		List<String> lore = m.hasLore() ? new ArrayList<>(m.getLore()) : new ArrayList<>();
 		lore.add(" ");
 		lore.add(StringFormatter.formatHex("#ccbf8fSeats§e: #86d672"+v.getSeatHandler().getSeats().size()));
 		if(v.getWeapons().size() > 0) lore.add(StringFormatter.formatHex("#ccbf8fWeapons§e: #86d672"+v.getWeapons().size()));
