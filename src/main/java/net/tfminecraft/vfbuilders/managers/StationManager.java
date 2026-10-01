@@ -216,7 +216,7 @@ public class StationManager implements Listener {
         if (id != null) {
             Blueprint b = BlueprintLoader.getByString(id);
             if (!b.hasInputs(p)) {
-                p.sendMessage("§cLacking items");
+                p.sendMessage("§cYou lack the materials to build this.");
                 p.playSound(p, Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
             }
@@ -224,7 +224,7 @@ public class StationManager implements Listener {
 
             ActivePlacement placement = new ActivePlacement(p, h.getStation(), b);
             activePlacements.put(p.getUniqueId(), placement);
-            p.sendMessage("§aSelect spawn location by left-clicking within "+Cache.constructionDistance+" blocks.");
+            p.sendMessage("§aStand where it should be built, within "+Cache.constructionDistance+" blocks of the station, and left-click.");
             startParticleTrail(placement); // Method defined below
         }
     }
@@ -255,7 +255,7 @@ public class StationManager implements Listener {
         // Re-check if player still has the required items
         if (!blueprint.hasInputs(p)) {
             activePlacements.remove(uuid);
-            p.sendMessage("§cYou no longer have the required items.");
+            p.sendMessage("§cYou no longer have the required materials.");
             p.playSound(p, Sound.ENTITY_VILLAGER_NO, 1f, 1f);
             return;
         }
@@ -276,7 +276,7 @@ public class StationManager implements Listener {
         placement.getStation().setSpawnLocation(clickLoc);
         placement.setFinalSpawnLocation(clickLoc);
         station.selectBlueprint(blueprint, p.getUniqueId());
-        p.sendMessage("§aSpawn location set!");
+        p.sendMessage("§aBuilding site chosen!");
         p.sendTitle("", "§eStarted Constructing "+blueprint.getVehicle().getName(), 10, 60, 10);
         p.playSound(p, Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
         activePlacements.remove(uuid);
@@ -315,7 +315,7 @@ public class StationManager implements Listener {
             public void run() {
                 if (activePlacements.get(uuid) == placement) {
                     activePlacements.remove(uuid);
-                    player.sendMessage("§cVehicle placement cancelled (timeout).");
+                    player.sendMessage("§cYou took too long to choose a building site.");
                 }
             }
         }.runTaskLater(VFBuilders.plugin, 20L * 30); // 30 seconds
