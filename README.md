@@ -25,14 +25,6 @@ VFBuilders supplies the workshop process; [VehicleFramework](https://github.com/
 
 Technical documentation is maintained in [TF-Minecraft/Docs](https://github.com/TF-Minecraft/Docs).
 
-## License
-
-Copyright (c) 2026 TF-Minecraft contributors.
-
-TF-Minecraft-authored material in this repository is licensed under the
-[Artistic License 2.0](LICENSE). Third-party dependencies and bundled material
-retain their own licenses.
-
 ## Tests and coverage
 
 Run `mvn clean verify` with Java 21 after preparing the pinned dependencies.
@@ -43,3 +35,11 @@ The tests cover construction state, material accounting, menus, permissions,
 placement timers, reloads, persistence, displays and plugin lifecycle. Bukkit
 and external plugin boundaries use MockBukkit/Mockito; configuration and item
 metadata use real serialization. Live Minecraft integration remains separate.
+
+## License
+
+Copyright (c) 2026 TF-Minecraft contributors.
+
+TF-Minecraft-authored material in this repository is licensed under the
+[Artistic License 2.0](LICENSE). Third-party dependencies and bundled material
+retain their own licenses.
