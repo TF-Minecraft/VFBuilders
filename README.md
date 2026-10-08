@@ -29,9 +29,10 @@ Technical documentation is maintained in [TF-Minecraft/Docs](https://github.com/
 
 Run `mvn clean verify` with Java 21 after preparing the pinned dependencies.
 The build enforces 100% production line, branch and instruction coverage with
-JaCoCo, without exclusions. CI uploads the HTML and XML coverage reports.
+JaCoCo, without exclusions. HTML/XML reports are written to `target/site/jacoco/`,
+and Surefire results to `target/surefire-reports/`. Build CI uploads both.
 
-The tests cover construction state, material accounting, menus, permissions,
+JUnit 5 tests cover construction state, material accounting, menus, permissions,
 placement timers, reloads, persistence, displays and plugin lifecycle. Bukkit
 and external plugin boundaries use MockBukkit/Mockito; configuration and item
 metadata use real serialization. Live Minecraft integration remains separate.
