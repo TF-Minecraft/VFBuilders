@@ -220,7 +220,62 @@ class ManagerTest {
     assertTrue(placements().isEmpty());
     assertSame(b, s.getBlueprint());
     assertEquals(player.getUniqueId(), s.getConstructorUuid());
+    // No character provider: the build starts without a character.
+    assertNull(s.getConstructorCharacterId());
     assertEquals(player.getLocation(), s.getSpawnLocation());
+  }
+
+  @Test
+  void buildStartRecordsTheCurrentCharacterOnTheEventAndStation() throws Exception {
+    var character = UUID.randomUUID();
+    var session =
+        new net.tfminecraft.tlibs.character.CharacterSession(
+            new net.tfminecraft.tlibs.character.CharacterRef(player.getUniqueId(), character), 1L);
+    var identity = mock(net.tfminecraft.tlibs.character.CharacterIdentity.class);
+    when(identity.currentSession(player)).thenReturn(Optional.of(session));
+    when(identity.isCurrent(session)).thenReturn(true);
+    var plugin = MockBukkit.createMockPlugin();
+    server
+        .getServicesManager()
+        .register(
+            net.tfminecraft.tlibs.character.CharacterIdentity.class,
+            identity,
+            plugin,
+            org.bukkit.plugin.ServicePriority.Normal);
+    var begun = new ArrayList<UUID>();
+    server
+        .getPluginManager()
+        .registerEvent(
+            net.tfminecraft.vfbuilders.events.BeginVehicleConstructionEvent.class,
+            new org.bukkit.event.Listener() {},
+            org.bukkit.event.EventPriority.MONITOR,
+            (listener, event) ->
+                begun.add(
+                    ((net.tfminecraft.vfbuilders.events.BeginVehicleConstructionEvent) event)
+                        .getConstructorCharacterId()),
+            plugin);
+    var s = manager.getStation(block);
+    var b = mock(Blueprint.class);
+    var vehicle = mock(net.tfminecraft.vehicleframework.vehicles.Vehicle.class);
+    when(vehicle.getName()).thenReturn("Boat");
+    when(b.getVehicle()).thenReturn(vehicle);
+    when(b.hasInputs(player)).thenReturn(true);
+    player.teleport(block.getLocation());
+    placements().put(player.getUniqueId(), new ActivePlacement(player, s, b));
+    manager.onPlayerLeftClick(left());
+    assertEquals(List.of(character), begun);
+    assertEquals(player.getUniqueId(), s.getConstructorUuid());
+    assertEquals(character, s.getConstructorCharacterId());
+
+    // A session that is no longer current is not credited; the build still starts.
+    s.cancelConstruction();
+    when(identity.isCurrent(session)).thenReturn(false);
+    placements().put(player.getUniqueId(), new ActivePlacement(player, s, b));
+    manager.onPlayerLeftClick(left());
+    assertEquals(Arrays.asList(character, null), begun);
+    assertSame(b, s.getBlueprint());
+    assertEquals(player.getUniqueId(), s.getConstructorUuid());
+    assertNull(s.getConstructorCharacterId());
   }
 
   @Test

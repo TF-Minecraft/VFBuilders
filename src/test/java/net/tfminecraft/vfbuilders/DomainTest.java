@@ -169,6 +169,7 @@ class DomainTest {
     assertSame(b, e.getBlueprint());
     assertSame(station, e.getStation());
     assertSame(loc, e.getSpawnLocation());
+    assertNull(e.getConstructorCharacterId());
     assertFalse(e.isCancelled());
     assertFalse(e.isKeepPlacement());
     e.setCancelled(true);
@@ -184,9 +185,11 @@ class DomainTest {
     assertSame(station, complete.getStation());
     assertSame(loc, complete.getSpawnLocation());
     assertSame(VehicleConstructEvent.getHandlerList(), complete.getHandlers());
+    assertNull(complete.getConstructorCharacterId());
     assertNull(new VehicleConstructEvent(null, null, b, loc, station).getConstructor());
     var cancel = new VehicleConstructionCancelEvent(player.getUniqueId(), b, station);
     assertEquals(player.getUniqueId(), cancel.getConstructorUuid());
+    assertNull(cancel.getConstructorCharacterId());
     assertSame(b, cancel.getBlueprint());
     assertSame(station, cancel.getStation());
     assertSame(VehicleConstructionCancelEvent.getHandlerList(), cancel.getHandlers());
@@ -202,6 +205,83 @@ class DomainTest {
     assertEquals(VFBGUI.BLUEPRINT, holder.getType());
     assertNull(holder.getInventory());
     new Cache();
+  }
+
+  @Test
+  void eventsCarryTheConstructorCharacterBesideTheAccount() {
+    var player = server.addPlayer();
+    var station = new ActiveStation(player.getLocation(), null);
+    var b = mock(Blueprint.class);
+    var loc = player.getLocation();
+    var character = UUID.randomUUID();
+    var begin = new BeginVehicleConstructionEvent(player, character, b, station, loc);
+    assertSame(player, begin.getConstructor());
+    assertEquals(character, begin.getConstructorCharacterId());
+    assertSame(b, begin.getBlueprint());
+    var complete =
+        new VehicleConstructEvent(player.getUniqueId(), character, null, b, loc, station);
+    assertSame(player, complete.getConstructor());
+    assertEquals(player.getUniqueId(), complete.getConstructorUuid());
+    assertEquals(character, complete.getConstructorCharacterId());
+    assertSame(station, complete.getStation());
+    var cancel = new VehicleConstructionCancelEvent(player.getUniqueId(), character, b, station);
+    assertEquals(player.getUniqueId(), cancel.getConstructorUuid());
+    assertEquals(character, cancel.getConstructorCharacterId());
+    assertSame(b, cancel.getBlueprint());
+  }
+
+  @Test
+  void accessorsCanBeProbedReflectively() throws Exception {
+    for (var type :
+        List.of(
+            BeginVehicleConstructionEvent.class,
+            VehicleConstructEvent.class,
+            VehicleConstructionCancelEvent.class)) {
+      assertEquals(UUID.class, type.getMethod("getConstructorCharacterId").getReturnType());
+    }
+    var freeze = ConstructionFreeze.class.getMethod("freezeReason", UUID.class, UUID.class);
+    assertTrue(freeze.isDefault());
+    assertEquals(String.class, freeze.getReturnType());
+  }
+
+  @Test
+  void accountOnlyFreezesStillDecideWhenAskedWithACharacter() {
+    var account = UUID.randomUUID();
+    var character = UUID.randomUUID();
+    var asked = new ArrayList<UUID>();
+    ConstructionFreeze byAccount =
+        id -> {
+          asked.add(id);
+          return account.equals(id) ? "account frozen" : null;
+        };
+    assertEquals("account frozen", byAccount.freezeReason(account, character));
+    assertNull(byAccount.freezeReason(UUID.randomUUID(), character));
+    assertEquals(account, asked.get(0));
+
+    var plugin = MockBukkit.createMockPlugin();
+    var seen = new ArrayList<List<UUID>>();
+    ConstructionFreeze byCharacter =
+        new ConstructionFreeze() {
+          @Override
+          public String freezeReason(UUID constructorUuid) {
+            return "account only";
+          }
+
+          @Override
+          public String freezeReason(UUID constructorUuid, UUID constructorCharacterId) {
+            seen.add(Arrays.asList(constructorUuid, constructorCharacterId));
+            return character.equals(constructorCharacterId) ? "character frozen" : null;
+          }
+        };
+    server
+        .getServicesManager()
+        .register(ConstructionFreeze.class, byCharacter, plugin, ServicePriority.Normal);
+    assertEquals("character frozen", ConstructionFreezes.reason(account, character));
+    assertNull(ConstructionFreezes.reason(account));
+    assertEquals(List.of(List.of(account, character)), seen.subList(0, 1));
+    assertEquals(Arrays.asList(account, null), seen.get(1));
+    assertNull(ConstructionFreezes.reason(null, character));
+    assertEquals(2, seen.size());
   }
 
   @Test

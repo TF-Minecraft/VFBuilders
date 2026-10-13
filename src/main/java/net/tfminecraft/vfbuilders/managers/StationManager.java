@@ -40,6 +40,7 @@ import net.tfminecraft.vfbuilders.core.ActivePlacement;
 import net.tfminecraft.vfbuilders.core.ActiveStation;
 import net.tfminecraft.vfbuilders.core.Blueprint;
 import net.tfminecraft.vfbuilders.core.BlueprintCategory;
+import net.tfminecraft.vfbuilders.core.ConstructorCharacter;
 import net.tfminecraft.vfbuilders.core.Station;
 import net.tfminecraft.vfbuilders.data.Database;
 import net.tfminecraft.vfbuilders.display.StationTimerDisplay;
@@ -261,8 +262,10 @@ public class StationManager implements Listener {
         }
 
         ActiveStation station = placement.getStation();
+        // Credit the character playing now; without a current session the build still starts.
+        UUID characterId = ConstructorCharacter.of(p);
         BeginVehicleConstructionEvent beginEvent = new BeginVehicleConstructionEvent(
-            p, blueprint, station, clickLoc);
+            p, characterId, blueprint, station, clickLoc);
         Bukkit.getPluginManager().callEvent(beginEvent);
         if (beginEvent.isCancelled()) {
             if (!beginEvent.isKeepPlacement()) {
@@ -275,7 +278,7 @@ public class StationManager implements Listener {
         blueprint.takeInputs(p);
         placement.getStation().setSpawnLocation(clickLoc);
         placement.setFinalSpawnLocation(clickLoc);
-        station.selectBlueprint(blueprint, p.getUniqueId());
+        station.selectBlueprint(blueprint, p.getUniqueId(), characterId);
         p.sendMessage("§aBuilding site chosen!");
         p.sendTitle("", "§eStarted Constructing "+blueprint.getVehicle().getName(), 10, 60, 10);
         p.playSound(p, Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);

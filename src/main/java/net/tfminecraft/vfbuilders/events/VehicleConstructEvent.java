@@ -16,6 +16,7 @@ public class VehicleConstructEvent extends Event {
     private static final HandlerList HANDLERS = new HandlerList();
 
     private final UUID constructorUuid;
+    private final UUID constructorCharacterId;
     private final Player constructor;
     private final ActiveVehicle vehicle;
     private final Blueprint blueprint;
@@ -28,7 +29,18 @@ public class VehicleConstructEvent extends Event {
             Blueprint blueprint,
             Location spawnLocation,
             ActiveStation station) {
+        this(constructorUuid, null, vehicle, blueprint, spawnLocation, station);
+    }
+
+    public VehicleConstructEvent(
+            UUID constructorUuid,
+            UUID constructorCharacterId,
+            ActiveVehicle vehicle,
+            Blueprint blueprint,
+            Location spawnLocation,
+            ActiveStation station) {
         this.constructorUuid = constructorUuid;
+        this.constructorCharacterId = constructorCharacterId;
         this.constructor = constructorUuid != null ? Bukkit.getPlayer(constructorUuid) : null;
         this.vehicle = vehicle;
         this.blueprint = blueprint;
@@ -36,8 +48,17 @@ public class VehicleConstructEvent extends Event {
         this.station = station;
     }
 
+    /** The account that started the project. */
     public UUID getConstructorUuid() {
         return constructorUuid;
+    }
+
+    /**
+     * The character the account was playing when the project started. Null when it had no
+     * current character session, or for projects saved before the character was recorded.
+     */
+    public UUID getConstructorCharacterId() {
+        return constructorCharacterId;
     }
 
     public Player getConstructor() {

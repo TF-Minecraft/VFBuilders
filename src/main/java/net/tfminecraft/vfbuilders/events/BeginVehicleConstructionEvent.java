@@ -1,5 +1,7 @@
 package net.tfminecraft.vfbuilders.events;
 
+import java.util.UUID;
+
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
@@ -13,6 +15,7 @@ public class BeginVehicleConstructionEvent extends Event implements Cancellable 
     private static final HandlerList HANDLERS = new HandlerList();
 
     private final Player constructor;
+    private final UUID constructorCharacterId;
     private final Blueprint blueprint;
     private final ActiveStation station;
     private final Location spawnLocation;
@@ -24,7 +27,17 @@ public class BeginVehicleConstructionEvent extends Event implements Cancellable 
             Blueprint blueprint,
             ActiveStation station,
             Location spawnLocation) {
+        this(constructor, null, blueprint, station, spawnLocation);
+    }
+
+    public BeginVehicleConstructionEvent(
+            Player constructor,
+            UUID constructorCharacterId,
+            Blueprint blueprint,
+            ActiveStation station,
+            Location spawnLocation) {
         this.constructor = constructor;
+        this.constructorCharacterId = constructorCharacterId;
         this.blueprint = blueprint;
         this.station = station;
         this.spawnLocation = spawnLocation;
@@ -33,6 +46,14 @@ public class BeginVehicleConstructionEvent extends Event implements Cancellable 
 
     public Player getConstructor() {
         return constructor;
+    }
+
+    /**
+     * The character the constructor is playing, recorded on the station if construction starts.
+     * Null when the player has no current character session.
+     */
+    public UUID getConstructorCharacterId() {
+        return constructorCharacterId;
     }
 
     public Blueprint getBlueprint() {
