@@ -28,6 +28,7 @@ public class ActiveStation {
     private Location loc;
     private Location spawnLoc;
     private UUID constructorUuid;
+    private UUID constructorCharacterId;
 
     private TextDisplay timerDisplay;
     private String freezeReason;
@@ -51,11 +52,23 @@ public class ActiveStation {
             int timeLeft,
             Location spawnLoc,
             UUID constructorUuid) {
+        this(loc, station, blueprintId, timeLeft, spawnLoc, constructorUuid, null);
+    }
+
+    public ActiveStation(
+            Location loc,
+            Station station,
+            String blueprintId,
+            int timeLeft,
+            Location spawnLoc,
+            UUID constructorUuid,
+            UUID constructorCharacterId) {
         this.id = UUID.randomUUID();
         this.loc = loc;
         this.station = station;
         this.timeLeft = timeLeft;
         this.constructorUuid = constructorUuid;
+        this.constructorCharacterId = constructorCharacterId;
 
         if (blueprintId != null) {
             Blueprint blueprint = BlueprintLoader.getByString(blueprintId);
@@ -72,9 +85,14 @@ public class ActiveStation {
 
 
     public void selectBlueprint(Blueprint b, UUID constructorUuid) {
+        selectBlueprint(b, constructorUuid, null);
+    }
+
+    public void selectBlueprint(Blueprint b, UUID constructorUuid, UUID constructorCharacterId) {
         blueprint = b;
         timeLeft = b.getTime();
         this.constructorUuid = constructorUuid;
+        this.constructorCharacterId = constructorCharacterId;
         freezeReason = null;
         ensureDisplay();
     }
@@ -85,7 +103,7 @@ public class ActiveStation {
             return true;
         }
 
-        String reason = ConstructionFreezes.reason(constructorUuid);
+        String reason = ConstructionFreezes.reason(constructorUuid, constructorCharacterId);
         if (reason != null) {
             freezeReason = reason;
             ensureDisplay();
@@ -125,7 +143,8 @@ public class ActiveStation {
 
         Location completedSpawn = spawnLoc.clone();
         Bukkit.getPluginManager().callEvent(
-            new VehicleConstructEvent(constructorUuid, vehicle, blueprint, completedSpawn, this));
+            new VehicleConstructEvent(
+                constructorUuid, constructorCharacterId, vehicle, blueprint, completedSpawn, this));
 
         // Visual effects
         Location center = completedSpawn.clone().add(0.5, 1, 0.5);
@@ -140,18 +159,21 @@ public class ActiveStation {
         spawnLoc = null;
         blueprint = null;
         constructorUuid = null;
+        constructorCharacterId = null;
     }
 
     public void cancelConstruction() {
         if (blueprint != null) {
             blueprint.drop(loc.clone().add(0.5, 1, 0.5));
             Bukkit.getPluginManager().callEvent(
-                new VehicleConstructionCancelEvent(constructorUuid, blueprint, this));
+                new VehicleConstructionCancelEvent(
+                    constructorUuid, constructorCharacterId, blueprint, this));
         }
         removeHolograms();
         spawnLoc = null;
         blueprint = null;
         constructorUuid = null;
+        constructorCharacterId = null;
         freezeReason = null;
         timeLeft = 0;
     }
@@ -198,6 +220,11 @@ public class ActiveStation {
 
     public UUID getConstructorUuid() {
         return constructorUuid;
+    }
+
+    /** Null when the constructor had no current character session, or for older saved projects. */
+    public UUID getConstructorCharacterId() {
+        return constructorCharacterId;
     }
 
     public void rebindDefinitions() {

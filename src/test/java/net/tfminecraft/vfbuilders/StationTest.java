@@ -70,10 +70,10 @@ class StationTest {
     assertTrue(s.hasBlueprint());
     assertEquals(2, s.getTimeLeft());
     assertEquals(id, s.getConstructorUuid());
-    freezes.when(() -> ConstructionFreezes.reason(id)).thenReturn("pause");
+    freezes.when(() -> ConstructionFreezes.reason(id, null)).thenReturn("pause");
     assertFalse(s.tick());
     assertEquals(2, s.getTimeLeft());
-    freezes.when(() -> ConstructionFreezes.reason(id)).thenReturn(null);
+    freezes.when(() -> ConstructionFreezes.reason(id, null)).thenReturn(null);
     assertFalse(s.tick());
     assertTrue(s.tick());
     assertEquals(0, s.getTimeLeft());
@@ -92,6 +92,56 @@ class StationTest {
   }
 
   @Test
+  void characterIsAskedForFreezesAndCarriedToCompletionAndCancellation() {
+    var account = UUID.randomUUID();
+    var character = UUID.randomUUID();
+    var s = new ActiveStation(loc, definition);
+    s.selectBlueprint(b, account, character);
+    assertEquals(account, s.getConstructorUuid());
+    assertEquals(character, s.getConstructorCharacterId());
+    freezes.when(() -> ConstructionFreezes.reason(account, character)).thenReturn("siege");
+    assertFalse(s.tick());
+    assertEquals(2, s.getTimeLeft());
+
+    var fired = new ArrayList<org.bukkit.event.Event>();
+    var plugin = MockBukkit.createMockPlugin();
+    for (var type :
+        List.of(
+            net.tfminecraft.vfbuilders.events.VehicleConstructEvent.class,
+            net.tfminecraft.vfbuilders.events.VehicleConstructionCancelEvent.class)) {
+      server
+          .getPluginManager()
+          .registerEvent(
+              type,
+              new org.bukkit.event.Listener() {},
+              org.bukkit.event.EventPriority.MONITOR,
+              (listener, event) -> fired.add(event),
+              plugin);
+    }
+    s.setSpawnLocation(loc);
+    var p = mock(Player.class);
+    when(p.getLocation()).thenReturn(loc);
+    when(world.getPlayers()).thenReturn(List.of(p));
+    try (var vf = mockStatic(VehicleFramework.class)) {
+      var manager = mock(VehicleManager.class);
+      vf.when(VehicleFramework::getVehicleManager).thenReturn(manager);
+      when(manager.spawn(loc, (Vehicle) null)).thenReturn(mock(ActiveVehicle.class));
+      s.complete();
+    }
+    var built = (net.tfminecraft.vfbuilders.events.VehicleConstructEvent) fired.get(0);
+    assertEquals(account, built.getConstructorUuid());
+    assertEquals(character, built.getConstructorCharacterId());
+    assertNull(s.getConstructorCharacterId());
+
+    s.selectBlueprint(b, account, character);
+    s.cancelConstruction();
+    var cancelled = (net.tfminecraft.vfbuilders.events.VehicleConstructionCancelEvent) fired.get(1);
+    assertEquals(account, cancelled.getConstructorUuid());
+    assertEquals(character, cancelled.getConstructorCharacterId());
+    assertNull(s.getConstructorCharacterId());
+  }
+
+  @Test
   void restorationAndReloadRebindOrRefund() {
     var old = new ActiveStation(loc, definition, null, 3, null);
     assertFalse(old.hasBlueprint());
@@ -104,6 +154,12 @@ class StationTest {
     BlueprintLoader.get().put("boat", b);
     var s = new ActiveStation(loc, definition, "boat", 5, loc, UUID.randomUUID());
     assertSame(b, s.getBlueprint());
+    assertNull(s.getConstructorCharacterId());
+    var character = UUID.randomUUID();
+    assertEquals(
+        character,
+        new ActiveStation(loc, definition, "boat", 5, loc, UUID.randomUUID(), character)
+            .getConstructorCharacterId());
     s.rebindDefinitions();
     assertSame(definition, s.getStation());
     var replacement = mock(Station.class);

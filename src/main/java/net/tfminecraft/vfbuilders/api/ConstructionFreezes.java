@@ -13,6 +13,14 @@ public final class ConstructionFreezes {
 
     /** @return the first freeze reason for this constructor, or null when nothing pauses it */
     public static String reason(UUID constructorUuid) {
+        return reason(constructorUuid, null);
+    }
+
+    /**
+     * @param constructorCharacterId may be null; providers then decide by account
+     * @return the first freeze reason for this constructor, or null when nothing pauses it
+     */
+    public static String reason(UUID constructorUuid, UUID constructorCharacterId) {
         if (constructorUuid == null) {
             return null;
         }
@@ -20,7 +28,7 @@ public final class ConstructionFreezes {
                 : Bukkit.getServicesManager().getRegistrations(ConstructionFreeze.class)) {
             String reason;
             try {
-                reason = registration.getProvider().freezeReason(constructorUuid);
+                reason = registration.getProvider().freezeReason(constructorUuid, constructorCharacterId);
             } catch (RuntimeException e) {
                 // A broken provider must not stall every station on the server.
                 continue;
