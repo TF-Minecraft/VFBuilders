@@ -73,6 +73,15 @@ class SchedulerTest {
       manager.rebindAfterReload(reload);
       verify(reload).run();
       verify(waiting).rebindDefinitions();
+      db.clearInvocations();
+      server.getScheduler().performTicks(579);
+      db.verify(() -> Database.saveStationsNow(map));
+      when(ready.hasBlueprint()).thenReturn(false);
+      when(waiting.hasBlueprint()).thenReturn(false);
+      when(detached.hasBlueprint()).thenReturn(false);
+      db.clearInvocations();
+      server.getScheduler().performTicks(600);
+      db.verify(() -> Database.saveStationsNow(map), never());
       manager.stop();
       db.verify(() -> Database.saveStations(map));
     } finally {

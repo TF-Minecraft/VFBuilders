@@ -14,6 +14,82 @@ import org.mockbukkit.mockbukkit.*;
 
 class DatabaseTest {
   @Test
+  void temporaryCreationAndSerializationFailuresKeepTheLastSnapshot() throws Exception {
+    Path temp = DatabaseFixture.folder();
+    VFBuilders.plugin = mock(VFBuilders.class);
+    when(VFBuilders.plugin.getDataFolder()).thenReturn(temp.toFile());
+    var directory = Files.createDirectories(temp.resolve("data"));
+    var file = directory.resolve("stations.json");
+    Files.writeString(file, "[]");
+    try {
+      try (var files = mockStatic(Files.class, CALLS_REAL_METHODS)) {
+        files
+            .when(() -> Files.createTempFile(eq(directory), eq("stations-"), eq(".tmp")))
+            .thenThrow(new java.io.IOException("simulated temporary creation failure"));
+        assertFalse(Database.saveStationsNow(Map.of()));
+      }
+      assertEquals("[]", Files.readString(file));
+      var detached = mock(ActiveStation.class);
+      when(detached.getLocation()).thenReturn(new Location(null, 1, 2, 3));
+      assertFalse(Database.saveStationsNow(Map.of(new Location(null, 1, 2, 3), detached)));
+      assertEquals("[]", Files.readString(file));
+    } finally {
+      VFBuilders.plugin = null;
+      Files.deleteIfExists(file);
+    }
+  }
+
+  @Test
+  void failedAtomicReplacementPreservesTheLastSnapshotAndCleansTemporaryFiles() throws Exception {
+    Path temp = DatabaseFixture.folder();
+    VFBuilders.plugin = mock(VFBuilders.class);
+    when(VFBuilders.plugin.getDataFolder()).thenReturn(temp.toFile());
+    var directory = Files.createDirectories(temp.resolve("data"));
+    var file = directory.resolve("stations.json");
+    Files.writeString(file, "[]");
+    try {
+      try (var files = mockStatic(Files.class, CALLS_REAL_METHODS)) {
+        files
+            .when(() -> Files.move(any(Path.class), eq(file), any(CopyOption[].class)))
+            .thenThrow(new java.io.IOException("simulated replacement failure"));
+        assertFalse(Database.saveStationsNow(Map.of()));
+      }
+      assertEquals("[]", Files.readString(file));
+      try (var paths = Files.list(directory)) {
+        assertEquals(List.of(file), paths.toList());
+      }
+      assertTrue(Database.saveStationsNow(Map.of()));
+      assertEquals("[]", Files.readString(file));
+    } finally {
+      VFBuilders.plugin = null;
+      Files.deleteIfExists(file);
+    }
+  }
+
+  @Test
+  void checkpointDoesNotRemoveConstructionDisplays() throws Exception {
+    Path temp = DatabaseFixture.folder();
+    VFBuilders.plugin = mock(VFBuilders.class);
+    when(VFBuilders.plugin.getDataFolder()).thenReturn(temp.toFile());
+    Files.createDirectories(temp.resolve("data"));
+    var world = mock(World.class);
+    when(world.getName()).thenReturn("build-world");
+    var loc = new Location(world, 3, 64, 5);
+    var definition = mock(Station.class);
+    when(definition.getId()).thenReturn("dock");
+    var station = mock(ActiveStation.class);
+    when(station.getLocation()).thenReturn(loc);
+    when(station.getStation()).thenReturn(definition);
+    try {
+      Database.saveStations(Map.of(loc, station));
+      verify(station, never()).removeHolograms();
+    } finally {
+      VFBuilders.plugin = null;
+      Files.deleteIfExists(temp.resolve("data/stations.json"));
+    }
+  }
+
+  @Test
   void savesRestoresLegacyAndOwnedProjectsAndHandlesIoFailures() throws Exception {
     var server = MockBukkit.mock();
     Path temp = DatabaseFixture.folder();
@@ -102,14 +178,17 @@ class DatabaseTest {
         world.unloadChunk(0, 0);
         var station = new ActiveStation(loc, definition);
         station.selectBlueprint(blueprint, account, character);
+        station.setOutputUuid("constructed-output");
         Database.saveStations(Map.of(loc, station));
         var restored = Database.loadStations().get(loc);
         assertEquals(account, restored.getConstructorUuid());
         assertEquals(character, restored.getConstructorCharacterId());
+        assertEquals("constructed-output", restored.getOutputUuid());
 
         station.selectBlueprint(blueprint, account, null);
         Database.saveStations(Map.of(loc, station));
         assertFalse(Files.readString(file).contains("constructorCharacterId"));
+        assertFalse(Files.readString(file).contains("outputUuid"));
         restored = Database.loadStations().get(loc);
         assertEquals(account, restored.getConstructorUuid());
         assertNull(restored.getConstructorCharacterId());
