@@ -202,7 +202,11 @@ public class ActiveStation {
         if (outputUuid != null) {
             VehiclePersistence persistence = VehiclePersistence.current();
             if (persistence != null && persistence.repository().find(outputUuid).isPresent()) {
-                clearConstructionDurably();
+                if (clearConstructionDurably()) {
+                    removeHolograms();
+                    freezeReason = null;
+                    timeLeft = 0;
+                }
             }
             return;
         }

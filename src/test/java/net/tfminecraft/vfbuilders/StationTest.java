@@ -382,12 +382,46 @@ class StationTest {
     station.cancelConstruction();
     assertTrue(station.hasBlueprint());
     verify(b, never()).drop(any());
-    station.setCheckpoint(() -> true);
     station.setOutputUuid("saved-output");
     when(persistence.repository().find("saved-output"))
         .thenReturn(Optional.of(mock(net.tfminecraft.vehicleframework.database.VehicleSnapshot.class)));
     station.cancelConstruction();
+    assertTrue(station.hasBlueprint());
+    station.setCheckpoint(() -> true);
+    station.setTimeLeft(40);
+    station.cancelConstruction();
     assertFalse(station.hasBlueprint());
+    assertEquals(0, station.getTimeLeft());
     verify(b, never()).drop(any());
+  }
+
+  @Test
+  void failedSaveWithAnExistingStoredOutputRecoversWithoutAnotherEventOrSpawn() {
+    var station = readyStation();
+    var vehicle = mock(ActiveVehicle.class);
+    when(vehicle.getUUID()).thenReturn("stored-output");
+    when(persistence.saveLive(vehicle)).thenAnswer(invocation -> {
+      when(persistence.repository().find("stored-output"))
+          .thenReturn(Optional.of(mock(net.tfminecraft.vehicleframework.database.VehicleSnapshot.class)));
+      return false;
+    });
+    var events = new ArrayList<org.bukkit.event.Event>();
+    var plugin = MockBukkit.createMockPlugin();
+    server.getPluginManager().registerEvent(
+        net.tfminecraft.vfbuilders.events.VehicleConstructEvent.class,
+        new org.bukkit.event.Listener() {}, org.bukkit.event.EventPriority.MONITOR,
+        (listener, event) -> events.add(event), plugin);
+    try (var vf = mockStatic(VehicleFramework.class)) {
+      var manager = mock(VehicleManager.class);
+      vf.when(VehicleFramework::getVehicleManager).thenReturn(manager);
+      when(manager.spawn(loc, (Vehicle) null)).thenReturn(vehicle);
+      station.complete();
+      assertTrue(station.hasBlueprint());
+      station.complete();
+      assertFalse(station.hasBlueprint());
+      assertEquals(1, events.size());
+      verify(manager).spawn(loc, (Vehicle) null);
+      verify(persistence).saveLive(vehicle);
+    }
   }
 }

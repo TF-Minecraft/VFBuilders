@@ -291,6 +291,20 @@ class ManagerTest {
   }
 
   @Test
+  void removalFailureAfterADurableCancellationDoesNotRestoreOrRefundTheBuildAgain() {
+    var station = manager.getStation(block);
+    var blueprint = mock(Blueprint.class);
+    station.selectBlueprint(blueprint, UUID.randomUUID());
+    database.when(() -> Database.saveStationsNow(anyMap())).thenReturn(true, false);
+    var event = new BlockBreakEvent(block, player);
+    manager.onBlockBreak(event);
+    assertTrue(event.isCancelled());
+    assertSame(station, manager.getStation(block));
+    assertFalse(station.hasBlueprint());
+    verify(blueprint).drop(any());
+  }
+
+  @Test
   void acceptedBuildIsRestorableBeforeAnyShutdown() throws Exception {
     var folder = DatabaseFixture.folder();
     when(VFBuilders.plugin.getDataFolder()).thenReturn(folder.toFile());

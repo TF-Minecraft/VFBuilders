@@ -29,38 +29,42 @@ public class Database {
     }
 
     public static boolean saveStationsNow(Map<Location, ActiveStation> stations) {
-        List<StationData> dataList = new ArrayList<>();
+        try {
+            List<StationData> dataList = new ArrayList<>();
 
-        for (ActiveStation station : stations.values()) {
-            StationData data = new StationData();
-            data.location = toSerializableLoc(station.getLocation());
-            data.stationId = station.getStation().getId(); // Save station identifier
-            data.spawnLocation = station.hasSpawnLocation() ? toSerializableLoc(station.getSpawnLocation()) : null;
-            data.blueprintId = station.hasBlueprint() ? station.getBlueprint().getId() : null;
-            data.timeLeft = station.getTimeLeft();
-            data.outputUuid = station.getOutputUuid();
-            if (station.hasBlueprint()) {
-                data.constructorUuid = toText(station.getConstructorUuid());
-                data.constructorCharacterId = toText(station.getConstructorCharacterId());
+            for (ActiveStation station : stations.values()) {
+                StationData data = new StationData();
+                data.location = toSerializableLoc(station.getLocation());
+                data.stationId = station.getStation().getId(); // Save station identifier
+                data.spawnLocation = station.hasSpawnLocation() ? toSerializableLoc(station.getSpawnLocation()) : null;
+                data.blueprintId = station.hasBlueprint() ? station.getBlueprint().getId() : null;
+                data.timeLeft = station.getTimeLeft();
+                data.outputUuid = station.getOutputUuid();
+                if (station.hasBlueprint()) {
+                    data.constructorUuid = toText(station.getConstructorUuid());
+                    data.constructorCharacterId = toText(station.getConstructorCharacterId());
+                }
+
+                dataList.add(data);
             }
 
-            dataList.add(data);
-        }
-
-        try {
             var directory = file.toPath().getParent();
             Files.createDirectories(directory);
             var temporary = Files.createTempFile(directory, "stations-", ".tmp");
-            try (Closeable cleanup = () -> Files.deleteIfExists(temporary)) {
+            boolean replaced = false;
+            try {
                 try (FileOutputStream output = new FileOutputStream(temporary.toFile())) {
                     output.write(gson.toJson(dataList).getBytes(StandardCharsets.UTF_8));
                     output.getFD().sync();
                 }
                 Files.move(temporary, file.toPath(),
                     StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                replaced = true;
+            } finally {
+                if (!replaced) Files.deleteIfExists(temporary);
             }
             return true;
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             e.printStackTrace();
             return false;
         }

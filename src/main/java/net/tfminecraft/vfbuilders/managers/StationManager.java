@@ -394,7 +394,10 @@ public class StationManager implements Listener {
 
         if (!stations.containsKey(loc)) return;
         if (remove(loc)) e.getPlayer().sendMessage("§cStation removed.");
-        else e.setCancelled(true);
+        else {
+            e.setCancelled(true);
+            e.getPlayer().sendMessage("§cThe station cannot be removed right now. Try again.");
+        }
     }
 
     @EventHandler
@@ -404,7 +407,10 @@ public class StationManager implements Listener {
 
         if (!stations.containsKey(loc)) return;
         if (remove(loc)) e.getPlayer().sendMessage("§cStation removed.");
-        else e.setCancelled(true);
+        else {
+            e.setCancelled(true);
+            e.getPlayer().sendMessage("§cThe station cannot be removed right now. Try again.");
+        }
     }
 
     private boolean remove(Location loc) {

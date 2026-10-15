@@ -14,6 +14,32 @@ import org.mockbukkit.mockbukkit.*;
 
 class DatabaseTest {
   @Test
+  void temporaryCreationAndSerializationFailuresKeepTheLastSnapshot() throws Exception {
+    Path temp = DatabaseFixture.folder();
+    VFBuilders.plugin = mock(VFBuilders.class);
+    when(VFBuilders.plugin.getDataFolder()).thenReturn(temp.toFile());
+    var directory = Files.createDirectories(temp.resolve("data"));
+    var file = directory.resolve("stations.json");
+    Files.writeString(file, "[]");
+    try {
+      try (var files = mockStatic(Files.class, CALLS_REAL_METHODS)) {
+        files
+            .when(() -> Files.createTempFile(eq(directory), eq("stations-"), eq(".tmp")))
+            .thenThrow(new java.io.IOException("simulated temporary creation failure"));
+        assertFalse(Database.saveStationsNow(Map.of()));
+      }
+      assertEquals("[]", Files.readString(file));
+      var detached = mock(ActiveStation.class);
+      when(detached.getLocation()).thenReturn(new Location(null, 1, 2, 3));
+      assertFalse(Database.saveStationsNow(Map.of(new Location(null, 1, 2, 3), detached)));
+      assertEquals("[]", Files.readString(file));
+    } finally {
+      VFBuilders.plugin = null;
+      Files.deleteIfExists(file);
+    }
+  }
+
+  @Test
   void failedAtomicReplacementPreservesTheLastSnapshotAndCleansTemporaryFiles() throws Exception {
     Path temp = DatabaseFixture.folder();
     VFBuilders.plugin = mock(VFBuilders.class);
