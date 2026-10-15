@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import java.util.*;
 import net.tfminecraft.vehicleframework.*;
+import net.tfminecraft.vehicleframework.database.VehiclePersistence;
 import net.tfminecraft.vehicleframework.managers.VehicleManager;
 import net.tfminecraft.vehicleframework.vehicles.*;
 import net.tfminecraft.vehicleframework.vehicles.Vehicle;
@@ -26,10 +27,14 @@ class StationTest {
   Station definition;
   MockedStatic<StationTimerDisplay> displays;
   MockedStatic<ConstructionFreezes> freezes;
+  MockedStatic<VehiclePersistence> persistenceAccess;
+  VehiclePersistence persistence;
 
   @BeforeEach
   void setup() {
     server = MockBukkit.mock();
+    VFBuilders.plugin = mock(VFBuilders.class);
+    when(VFBuilders.plugin.getName()).thenReturn("VFBuilders");
     world = mock(World.class);
     loc = new Location(world, 1, 64, 3);
     b = mock(Blueprint.class);
@@ -39,6 +44,10 @@ class StationTest {
     when(definition.getId()).thenReturn("dock");
     displays = mockStatic(StationTimerDisplay.class);
     freezes = mockStatic(ConstructionFreezes.class);
+    persistence = mock(VehiclePersistence.class, RETURNS_DEEP_STUBS);
+    when(persistence.saveLive(any(ActiveVehicle.class))).thenReturn(true);
+    persistenceAccess = mockStatic(VehiclePersistence.class);
+    persistenceAccess.when(VehiclePersistence::current).thenReturn(persistence);
     BlueprintLoader.get().clear();
     StationLoader.get().clear();
   }
@@ -47,7 +56,9 @@ class StationTest {
   void cleanup() {
     displays.close();
     freezes.close();
+    persistenceAccess.close();
     MockBukkit.unmock();
+    VFBuilders.plugin = null;
   }
 
   @Test
@@ -227,5 +238,156 @@ class StationTest {
       verify(world)
           .playSound(any(Location.class), eq(Sound.BLOCK_BEACON_ACTIVATE), eq(.8f), eq(1.6f));
     }
+  }
+
+  ActiveStation readyStation() {
+    var station = new ActiveStation(loc, definition);
+    station.selectBlueprint(b, UUID.randomUUID(), UUID.randomUUID());
+    station.setSpawnLocation(loc);
+    station.setTimeLeft(0);
+    var player = mock(Player.class);
+    when(player.getLocation()).thenReturn(loc);
+    when(world.getPlayers()).thenReturn(List.of(player));
+    return station;
+  }
+
+  @Test
+  void completionRecordsOutputBeforeEventAndSavesVehicleBeforeClearingTheJob() {
+    var station = readyStation();
+    var vehicle = mock(ActiveVehicle.class);
+    when(vehicle.getUUID()).thenReturn("created-vehicle");
+    var states = new ArrayList<String>();
+    station.setCheckpoint(() -> {
+      states.add(station.getOutputUuid() + ":" + station.hasBlueprint());
+      return true;
+    });
+    when(persistence.saveLive(vehicle)).thenAnswer(invocation -> {
+      states.add("vehicle-saved");
+      return true;
+    });
+    var plugin = MockBukkit.createMockPlugin();
+    server.getPluginManager().registerEvent(
+        net.tfminecraft.vfbuilders.events.VehicleConstructEvent.class,
+        new org.bukkit.event.Listener() {}, org.bukkit.event.EventPriority.MONITOR,
+        (listener, event) -> states.add("event"), plugin);
+    try (var vf = mockStatic(VehicleFramework.class)) {
+      var manager = mock(VehicleManager.class);
+      vf.when(VehicleFramework::getVehicleManager).thenReturn(manager);
+      when(manager.spawn(loc, (Vehicle) null)).thenReturn(vehicle);
+      station.complete();
+      assertEquals(List.of("created-vehicle:true", "event", "vehicle-saved", "null:false"), states);
+      verify(persistence).saveLive(vehicle);
+      assertFalse(station.hasBlueprint());
+      assertNull(station.getOutputUuid());
+    }
+  }
+
+  @Test
+  void failedOutputCheckpointRemovesTheUnsavedEntityAndLeavesTheBuildQueued() {
+    var station = readyStation();
+    station.setCheckpoint(() -> false);
+    var vehicle = mock(ActiveVehicle.class);
+    when(vehicle.getUUID()).thenReturn("created-vehicle");
+    try (var vf = mockStatic(VehicleFramework.class)) {
+      var manager = mock(VehicleManager.class);
+      vf.when(VehicleFramework::getVehicleManager).thenReturn(manager);
+      when(manager.spawn(loc, (Vehicle) null)).thenReturn(vehicle);
+      station.complete();
+      verify(vehicle).remove(net.tfminecraft.vehicleframework.enums.VehicleRemoveReason.UNLOAD);
+      verify(persistence, never()).saveLive(any(ActiveVehicle.class));
+      assertTrue(station.hasBlueprint());
+      assertNull(station.getOutputUuid());
+    }
+  }
+
+  @Test
+  void failedVehicleSaveRetriesTheSameEntityAndDoesNotRepeatTheConstructionEvent() {
+    var station = readyStation();
+    var vehicle = mock(ActiveVehicle.class);
+    when(vehicle.getUUID()).thenReturn("created-vehicle");
+    when(persistence.saveLive(vehicle)).thenReturn(false, true);
+    var events = new ArrayList<org.bukkit.event.Event>();
+    var plugin = MockBukkit.createMockPlugin();
+    server.getPluginManager().registerEvent(
+        net.tfminecraft.vfbuilders.events.VehicleConstructEvent.class,
+        new org.bukkit.event.Listener() {}, org.bukkit.event.EventPriority.MONITOR,
+        (listener, event) -> events.add(event), plugin);
+    try (var vf = mockStatic(VehicleFramework.class)) {
+      var manager = mock(VehicleManager.class);
+      vf.when(VehicleFramework::getVehicleManager).thenReturn(manager);
+      when(manager.spawn(loc, (Vehicle) null)).thenReturn(vehicle);
+      when(manager.getByUUID("created-vehicle")).thenReturn(vehicle);
+      station.complete();
+      assertTrue(station.hasBlueprint());
+      assertEquals("created-vehicle", station.getOutputUuid());
+      station.cancelConstruction();
+      assertTrue(station.hasBlueprint());
+      station.complete();
+      assertFalse(station.hasBlueprint());
+      assertEquals(1, events.size());
+      verify(manager).spawn(loc, (Vehicle) null);
+    }
+  }
+
+  @Test
+  void savedOutputIncludingADeletedVehicleCannotSpawnAgainAfterAnInterruptedClear() {
+    var station = readyStation();
+    station.setOutputUuid("saved-output");
+    when(persistence.repository().find("saved-output"))
+        .thenReturn(Optional.of(mock(net.tfminecraft.vehicleframework.database.VehicleSnapshot.class)));
+    var allowSave = new java.util.concurrent.atomic.AtomicBoolean(false);
+    station.setCheckpoint(allowSave::get);
+    try (var vf = mockStatic(VehicleFramework.class)) {
+      var manager = mock(VehicleManager.class);
+      vf.when(VehicleFramework::getVehicleManager).thenReturn(manager);
+      station.complete();
+      assertTrue(station.hasBlueprint());
+      assertEquals("saved-output", station.getOutputUuid());
+      assertNotNull(station.getConstructorUuid());
+      assertNotNull(station.getConstructorCharacterId());
+      assertEquals(loc, station.getSpawnLocation());
+      allowSave.set(true);
+      station.complete();
+      assertFalse(station.hasBlueprint());
+      verifyNoInteractions(manager);
+      verify(b, never()).drop(any());
+    }
+  }
+
+  @Test
+  void missingOutputAfterRestartCanBeRebuiltButUnavailablePersistenceMustWait() {
+    var station = readyStation();
+    station.setOutputUuid("lost-runtime-output");
+    persistenceAccess.when(VehiclePersistence::current).thenReturn(null);
+    station.complete();
+    station.cancelConstruction();
+    assertTrue(station.hasBlueprint());
+    persistenceAccess.when(VehiclePersistence::current).thenReturn(persistence);
+    var vehicle = mock(ActiveVehicle.class);
+    when(vehicle.getUUID()).thenReturn("replacement-output");
+    try (var vf = mockStatic(VehicleFramework.class)) {
+      var manager = mock(VehicleManager.class);
+      vf.when(VehicleFramework::getVehicleManager).thenReturn(manager);
+      when(manager.spawn(loc, (Vehicle) null)).thenReturn(vehicle);
+      station.complete();
+      assertFalse(station.hasBlueprint());
+      verify(manager).spawn(loc, (Vehicle) null);
+    }
+  }
+
+  @Test
+  void cancellationSaveFailureKeepsTheBuildAndStoredOutputCancellationDoesNotRefund() {
+    var station = readyStation();
+    station.setCheckpoint(() -> false);
+    station.cancelConstruction();
+    assertTrue(station.hasBlueprint());
+    verify(b, never()).drop(any());
+    station.setCheckpoint(() -> true);
+    station.setOutputUuid("saved-output");
+    when(persistence.repository().find("saved-output"))
+        .thenReturn(Optional.of(mock(net.tfminecraft.vehicleframework.database.VehicleSnapshot.class)));
+    station.cancelConstruction();
+    assertFalse(station.hasBlueprint());
+    verify(b, never()).drop(any());
   }
 }

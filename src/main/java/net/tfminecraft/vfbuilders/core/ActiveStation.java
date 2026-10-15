@@ -1,6 +1,7 @@
 package net.tfminecraft.vfbuilders.core;
 
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -9,6 +10,7 @@ import org.bukkit.Sound;
 import org.bukkit.entity.TextDisplay;
 
 import net.tfminecraft.vfbuilders.api.ConstructionFreezes;
+import net.tfminecraft.vfbuilders.VFBuilders;
 import net.tfminecraft.vfbuilders.display.StationTimerDisplay;
 import net.tfminecraft.vfbuilders.events.VehicleConstructEvent;
 import net.tfminecraft.vfbuilders.events.VehicleConstructionCancelEvent;
@@ -16,6 +18,8 @@ import net.tfminecraft.vfbuilders.loaders.BlueprintLoader;
 import net.tfminecraft.vfbuilders.loaders.StationLoader;
 import net.tfminecraft.vehicleframework.VFLogger;
 import net.tfminecraft.vehicleframework.VehicleFramework;
+import net.tfminecraft.vehicleframework.database.VehiclePersistence;
+import net.tfminecraft.vehicleframework.enums.VehicleRemoveReason;
 import net.tfminecraft.vehicleframework.managers.VehicleManager;
 import net.tfminecraft.vehicleframework.vehicles.ActiveVehicle;
 
@@ -29,6 +33,9 @@ public class ActiveStation {
     private Location spawnLoc;
     private UUID constructorUuid;
     private UUID constructorCharacterId;
+    private String outputUuid;
+    private boolean constructionEventSent;
+    private BooleanSupplier checkpoint = () -> true;
 
     private TextDisplay timerDisplay;
     private String freezeReason;
@@ -93,6 +100,8 @@ public class ActiveStation {
         timeLeft = b.getTime();
         this.constructorUuid = constructorUuid;
         this.constructorCharacterId = constructorCharacterId;
+        outputUuid = null;
+        constructionEventSent = false;
         freezeReason = null;
         ensureDisplay();
     }
@@ -135,16 +144,46 @@ public class ActiveStation {
         }
 
         VehicleManager manager = VehicleFramework.getVehicleManager();
-        ActiveVehicle vehicle = manager.spawn(spawnLoc, blueprint.getVehicle());
+        VehiclePersistence persistence = VehiclePersistence.current();
+        if (persistence == null) {
+            VFLogger.log("Cannot complete construction: SQLite is not open at " + loc);
+            return;
+        }
+        if (outputUuid != null && persistence.repository().find(outputUuid).isPresent()) {
+            VFLogger.info(VFBuilders.plugin, "Construction output already stored: station=" + loc
+                + " vehicle=" + outputUuid);
+            clearConstructionDurably();
+            return;
+        }
+        ActiveVehicle vehicle = outputUuid == null ? null : manager.getByUUID(outputUuid);
+        if (vehicle == null) {
+            vehicle = manager.spawn(spawnLoc, blueprint.getVehicle());
+            if (vehicle != null) {
+                outputUuid = vehicle.getUUID();
+                constructionEventSent = false;
+                if (!checkpoint.getAsBoolean()) {
+                    vehicle.remove(VehicleRemoveReason.UNLOAD);
+                    outputUuid = null;
+                    return;
+                }
+            }
+        }
         if (vehicle == null) {
             VFLogger.log("Failed to spawn vehicle for blueprint " + blueprint.getId() + " at station " + loc);
             return;
         }
 
         Location completedSpawn = spawnLoc.clone();
-        Bukkit.getPluginManager().callEvent(
-            new VehicleConstructEvent(
-                constructorUuid, constructorCharacterId, vehicle, blueprint, completedSpawn, this));
+        if (!constructionEventSent) {
+            constructionEventSent = true;
+            Bukkit.getPluginManager().callEvent(
+                new VehicleConstructEvent(
+                    constructorUuid, constructorCharacterId, vehicle, blueprint, completedSpawn, this));
+        }
+        if (!persistence.saveLive(vehicle)) {
+            VFLogger.log("Cannot save constructed vehicle " + outputUuid + " at " + loc);
+            return;
+        }
 
         // Visual effects
         Location center = completedSpawn.clone().add(0.5, 1, 0.5);
@@ -156,26 +195,62 @@ public class ActiveStation {
         center.getWorld().playSound(center, Sound.ENTITY_IRON_GOLEM_REPAIR, 1f, 1.2f);
         center.getWorld().playSound(center, Sound.BLOCK_BEACON_ACTIVATE, 0.8f, 1.6f);
 
-        spawnLoc = null;
-        blueprint = null;
-        constructorUuid = null;
-        constructorCharacterId = null;
+        clearConstructionDurably();
     }
 
     public void cancelConstruction() {
-        if (blueprint != null) {
-            blueprint.drop(loc.clone().add(0.5, 1, 0.5));
+        if (outputUuid != null) {
+            VehiclePersistence persistence = VehiclePersistence.current();
+            if (persistence != null && persistence.repository().find(outputUuid).isPresent()) {
+                clearConstructionDurably();
+            }
+            return;
+        }
+        Blueprint cancelled = blueprint;
+        UUID account = constructorUuid;
+        UUID character = constructorCharacterId;
+        if (!clearConstructionDurably()) return;
+        if (cancelled != null) {
+            cancelled.drop(loc.clone().add(0.5, 1, 0.5));
             Bukkit.getPluginManager().callEvent(
                 new VehicleConstructionCancelEvent(
-                    constructorUuid, constructorCharacterId, blueprint, this));
+                    account, character, cancelled, this));
         }
         removeHolograms();
-        spawnLoc = null;
-        blueprint = null;
-        constructorUuid = null;
-        constructorCharacterId = null;
         freezeReason = null;
         timeLeft = 0;
+    }
+
+    private boolean clearConstructionDurably() {
+        Blueprint previousBlueprint = blueprint;
+        Location previousSpawn = spawnLoc;
+        UUID previousAccount = constructorUuid;
+        UUID previousCharacter = constructorCharacterId;
+        String previousOutput = outputUuid;
+        blueprint = null;
+        spawnLoc = null;
+        constructorUuid = null;
+        constructorCharacterId = null;
+        outputUuid = null;
+        if (checkpoint.getAsBoolean()) return true;
+        blueprint = previousBlueprint;
+        spawnLoc = previousSpawn;
+        constructorUuid = previousAccount;
+        constructorCharacterId = previousCharacter;
+        outputUuid = previousOutput;
+        return false;
+    }
+
+    public void setCheckpoint(BooleanSupplier checkpoint) {
+        this.checkpoint = checkpoint;
+    }
+
+    public String getOutputUuid() {
+        return outputUuid;
+    }
+
+    public void setOutputUuid(String outputUuid) {
+        this.outputUuid = outputUuid;
     }
 
     public UUID getUuid() {

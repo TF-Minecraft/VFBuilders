@@ -7,6 +7,7 @@ import java.util.*;
 import net.tfminecraft.tlibs.TLibs;
 import net.tfminecraft.tlibs.objects.api.BlockAPI;
 import net.tfminecraft.vfbuilders.core.*;
+import net.tfminecraft.vfbuilders.data.Database;
 import net.tfminecraft.vfbuilders.loaders.*;
 import net.tfminecraft.vfbuilders.managers.*;
 import org.bukkit.*;
@@ -22,6 +23,7 @@ class ManagerTest {
   ServerMock server;
   StationManager manager;
   MockedStatic<TLibs> libs;
+  MockedStatic<Database> database;
   BlockAPI api;
   Station definition;
   Block block;
@@ -38,6 +40,8 @@ class ManagerTest {
     when(VFBuilders.plugin.getServer()).thenReturn(server);
     api = mock(BlockAPI.class, RETURNS_DEEP_STUBS);
     libs = mockStatic(TLibs.class);
+    database = mockStatic(Database.class);
+    database.when(() -> Database.saveStationsNow(anyMap())).thenReturn(true);
     libs.when(TLibs::getBlockAPI).thenReturn(api);
     StationLoader.get().clear();
     definition = mock(Station.class);
@@ -51,6 +55,7 @@ class ManagerTest {
   @AfterEach
   void teardown() {
     libs.close();
+    database.close();
     MockBukkit.unmock();
     VFBuilders.plugin = null;
   }
@@ -223,6 +228,98 @@ class ManagerTest {
     // No character provider: the build starts without a character.
     assertNull(s.getConstructorCharacterId());
     assertEquals(player.getLocation(), s.getSpawnLocation());
+    database.verify(() -> Database.saveStationsNow(anyMap()));
+  }
+
+  @Test
+  void failedStartSaveCancelsAndRefundsConstruction() throws Exception {
+    database.when(() -> Database.saveStationsNow(anyMap())).thenReturn(false);
+    var station = manager.getStation(block);
+    var blueprint = mock(Blueprint.class);
+    when(blueprint.hasInputs(player)).thenReturn(true);
+    player.teleport(block.getLocation());
+    placements().put(player.getUniqueId(), new ActivePlacement(player, station, blueprint));
+    manager.onPlayerLeftClick(left());
+    verify(blueprint).takeInputs(player);
+    verify(blueprint).drop(any(Location.class));
+    assertFalse(station.hasBlueprint());
+    assertTrue(placements().isEmpty());
+    assertTrue(((org.mockbukkit.mockbukkit.entity.PlayerMock) player).nextMessage().contains("could not be saved"));
+  }
+
+  @Test
+  void stalePlacementCannotOverwriteAnAcceptedBuild() throws Exception {
+    var station = manager.getStation(block);
+    var first = mock(Blueprint.class);
+    var replacement = mock(Blueprint.class);
+    when(replacement.hasInputs(player)).thenReturn(true);
+    station.selectBlueprint(first, UUID.randomUUID());
+    player.teleport(block.getLocation());
+    placements().put(player.getUniqueId(), new ActivePlacement(player, station, replacement));
+    manager.onPlayerLeftClick(left());
+    assertSame(first, station.getBlueprint());
+    verify(replacement, never()).takeInputs(player);
+    assertTrue(placements().isEmpty());
+  }
+
+  @Test
+  void failedCancellationSavePreventsBreakingTheStationAndRefundingTwice() {
+    var station = manager.getStation(block);
+    var blueprint = mock(Blueprint.class);
+    station.selectBlueprint(blueprint, UUID.randomUUID());
+    database.when(() -> Database.saveStationsNow(anyMap())).thenReturn(false);
+    var event = new BlockBreakEvent(block, player);
+    manager.onBlockBreak(event);
+    assertTrue(event.isCancelled());
+    assertSame(station, manager.getStation(block));
+    assertSame(blueprint, station.getBlueprint());
+    verify(blueprint, never()).drop(any());
+  }
+
+  @Test
+  void failedRemovalSaveRestoresAnIdleFurnitureStation() {
+    var station = manager.getStation(block);
+    database.when(() -> Database.saveStationsNow(anyMap())).thenReturn(false);
+    var event = mock(dev.lone.itemsadder.api.Events.FurnitureBreakEvent.class);
+    var entity = mock(org.bukkit.entity.Entity.class);
+    when(entity.getLocation()).thenReturn(block.getLocation());
+    when(event.getBukkitEntity()).thenReturn(entity);
+    when(event.getPlayer()).thenReturn(player);
+    manager.onFurnitureBreak(event);
+    verify(event).setCancelled(true);
+    assertSame(station, manager.getStation(block));
+  }
+
+  @Test
+  void acceptedBuildIsRestorableBeforeAnyShutdown() throws Exception {
+    var folder = DatabaseFixture.folder();
+    when(VFBuilders.plugin.getDataFolder()).thenReturn(folder.toFile());
+    database.close();
+    database = mockStatic(Database.class, CALLS_REAL_METHODS);
+    when(definition.getId()).thenReturn("dock");
+    var blueprint = mock(Blueprint.class);
+    when(blueprint.getId()).thenReturn("boat");
+    when(blueprint.getTime()).thenReturn(120);
+    when(blueprint.hasInputs(player)).thenReturn(true);
+    var vehicle = mock(net.tfminecraft.vehicleframework.vehicles.Vehicle.class);
+    when(vehicle.getName()).thenReturn("Boat");
+    when(blueprint.getVehicle()).thenReturn(vehicle);
+    BlueprintLoader.get().put("boat", blueprint);
+    player.teleport(block.getLocation());
+    try (var display = mockStatic(net.tfminecraft.vfbuilders.display.StationTimerDisplay.class)) {
+      var station = manager.getStation(block);
+      placements().put(player.getUniqueId(), new ActivePlacement(player, station, blueprint));
+      manager.onPlayerLeftClick(left());
+      var restored = Database.loadStations().get(block.getLocation());
+      assertNotNull(restored);
+      assertSame(blueprint, restored.getBlueprint());
+      assertEquals(player.getUniqueId(), restored.getConstructorUuid());
+      assertEquals(120, restored.getTimeLeft());
+      assertEquals(player.getLocation(), restored.getSpawnLocation());
+    } finally {
+      java.nio.file.Files.deleteIfExists(folder.resolve("data/stations.json"));
+      BlueprintLoader.get().clear();
+    }
   }
 
   @Test

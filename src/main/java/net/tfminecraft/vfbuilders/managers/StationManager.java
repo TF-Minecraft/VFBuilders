@@ -50,6 +50,7 @@ import net.tfminecraft.vfbuilders.holders.VFBHolder;
 import net.tfminecraft.vfbuilders.loaders.BlueprintLoader;
 import net.tfminecraft.vfbuilders.loaders.CategoryLoader;
 import net.tfminecraft.vfbuilders.loaders.StationLoader;
+import net.tfminecraft.vehicleframework.VFLogger;
 
 public class StationManager implements Listener {
     private HashMap<Location, ActiveStation> stations = new HashMap<>();
@@ -64,6 +65,7 @@ public class StationManager implements Listener {
             if(checker.checkBlock(b, station.getBlock())) {
                 ActiveStation a = new ActiveStation(b.getLocation(), station);
                 stations.put(b.getLocation(), a);
+                bindCheckpoint(a);
                 return a;
             }
         }
@@ -72,9 +74,18 @@ public class StationManager implements Listener {
 
     public void start() {
         stations = Database.loadStations();
+        stations.values().forEach(this::bindCheckpoint);
         refreshAllDisplays();
         startStationTrailLoop();
         tickCycle();
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (stations.values().stream().anyMatch(ActiveStation::hasBlueprint)) {
+                    Database.saveStationsNow(stations);
+                }
+            }
+        }.runTaskTimer(VFBuilders.plugin, 600L, 600L);
     }
 
     public void stop() {
@@ -89,6 +100,7 @@ public class StationManager implements Listener {
         for (ActiveStation station : stations.values()) {
             station.rebindDefinitions();
         }
+        Database.saveStationsNow(stations);
         refreshAllDisplays();
     }
 
@@ -102,6 +114,10 @@ public class StationManager implements Listener {
                 }
             }
         }.runTaskTimer(VFBuilders.plugin, 0L, 20L); // every 5 ticks (0.25s)
+    }
+
+    private void bindCheckpoint(ActiveStation station) {
+        station.setCheckpoint(() -> Database.saveStationsNow(stations));
     }
 
     public void startStationTrailLoop() {
@@ -262,6 +278,11 @@ public class StationManager implements Listener {
         }
 
         ActiveStation station = placement.getStation();
+        if (station.hasBlueprint()) {
+            activePlacements.remove(uuid);
+            p.sendMessage("§cThis station is already constructing a vehicle.");
+            return;
+        }
         // Credit the character playing now; without a current session the build still starts.
         UUID characterId = ConstructorCharacter.of(p);
         BeginVehicleConstructionEvent beginEvent = new BeginVehicleConstructionEvent(
@@ -279,6 +300,18 @@ public class StationManager implements Listener {
         placement.getStation().setSpawnLocation(clickLoc);
         placement.setFinalSpawnLocation(clickLoc);
         station.selectBlueprint(blueprint, p.getUniqueId(), characterId);
+        if (!Database.saveStationsNow(stations)) {
+            // The atomic write kept the previous idle snapshot; undo only this rejected start.
+            station.setCheckpoint(() -> true);
+            station.cancelConstruction();
+            bindCheckpoint(station);
+            activePlacements.remove(uuid);
+            p.sendMessage("§cConstruction could not be saved. Your materials have been returned.");
+            return;
+        }
+        VFLogger.info(VFBuilders.plugin, "Construction started: station=" + stationLoc
+            + " blueprint=" + blueprint.getId() + " account=" + p.getUniqueId()
+            + " character=" + characterId);
         p.sendMessage("§aBuilding site chosen!");
         p.sendTitle("", "§eStarted Constructing "+blueprint.getVehicle().getName(), 10, 60, 10);
         p.playSound(p, Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
@@ -360,8 +393,8 @@ public class StationManager implements Listener {
         Location loc = block.getLocation();
 
         if (!stations.containsKey(loc)) return;
-        e.getPlayer().sendMessage("§cStation removed.");
-        remove(loc);
+        if (remove(loc)) e.getPlayer().sendMessage("§cStation removed.");
+        else e.setCancelled(true);
     }
 
     @EventHandler
@@ -370,19 +403,26 @@ public class StationManager implements Listener {
         Location loc = e.getBukkitEntity().getLocation().getBlock().getLocation();
 
         if (!stations.containsKey(loc)) return;
-        e.getPlayer().sendMessage("§cStation removed.");
-        remove(loc);
+        if (remove(loc)) e.getPlayer().sendMessage("§cStation removed.");
+        else e.setCancelled(true);
     }
 
-    private void remove(Location loc) {
-        ActiveStation station = stations.remove(loc);
+    private boolean remove(Location loc) {
+        ActiveStation station = stations.get(loc);
         station.removeHolograms();
 
         if (station.hasBlueprint()) {
             station.cancelConstruction();
+            if (station.hasBlueprint()) return false;
         }
 
+        stations.remove(loc);
         station.setSpawnLocation(null); // Important to stop the particle trail
+        if (!Database.saveStationsNow(stations)) {
+            stations.put(loc, station);
+            return false;
+        }
+        return true;
     }
 
 }

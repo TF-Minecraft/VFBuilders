@@ -14,6 +14,9 @@ import net.tfminecraft.vfbuilders.loaders.StationLoader;
 
 import java.io.*;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 public class Database {
@@ -22,16 +25,20 @@ public class Database {
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
     public static void saveStations(Map<Location, ActiveStation> stations) {
+        saveStationsNow(stations);
+    }
+
+    public static boolean saveStationsNow(Map<Location, ActiveStation> stations) {
         List<StationData> dataList = new ArrayList<>();
 
         for (ActiveStation station : stations.values()) {
-            station.removeHolograms();
             StationData data = new StationData();
             data.location = toSerializableLoc(station.getLocation());
             data.stationId = station.getStation().getId(); // Save station identifier
             data.spawnLocation = station.hasSpawnLocation() ? toSerializableLoc(station.getSpawnLocation()) : null;
             data.blueprintId = station.hasBlueprint() ? station.getBlueprint().getId() : null;
             data.timeLeft = station.getTimeLeft();
+            data.outputUuid = station.getOutputUuid();
             if (station.hasBlueprint()) {
                 data.constructorUuid = toText(station.getConstructorUuid());
                 data.constructorCharacterId = toText(station.getConstructorCharacterId());
@@ -40,10 +47,22 @@ public class Database {
             dataList.add(data);
         }
 
-        try (Writer writer = new FileWriter(file)) {
-            gson.toJson(dataList, writer);
+        try {
+            var directory = file.toPath().getParent();
+            Files.createDirectories(directory);
+            var temporary = Files.createTempFile(directory, "stations-", ".tmp");
+            try (Closeable cleanup = () -> Files.deleteIfExists(temporary)) {
+                try (FileOutputStream output = new FileOutputStream(temporary.toFile())) {
+                    output.write(gson.toJson(dataList).getBytes(StandardCharsets.UTF_8));
+                    output.getFD().sync();
+                }
+                Files.move(temporary, file.toPath(),
+                    StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            }
+            return true;
         } catch (IOException e) {
             e.printStackTrace();
+            return false;
         }
     }
 
@@ -71,6 +90,7 @@ public class Database {
                     // Stations saved before 2.2.0 have no character; SimpleFactions resolves the heir.
                     toUuid(data.constructorCharacterId)
                 );
+                station.setOutputUuid(data.outputUuid);
 
                 loaded.put(loc, station);
             }
@@ -125,6 +145,7 @@ public class Database {
         int timeLeft;
         String constructorUuid;
         String constructorCharacterId;
+        String outputUuid;
     }
 }
 
