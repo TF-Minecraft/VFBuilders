@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class Database {
 
-    private static final File file = new File(VFBuilders.plugin.getDataFolder(), "data/stations.json");
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
     /** Held while a snapshot file is written; package-visible so tests can hold the writer. */
@@ -38,9 +37,13 @@ public class Database {
     private static long newestWrite;
     private static ExecutorService writer;
 
-    /** The stations file; fixed when this class first loads, which is why tests read it from here. */
+    /** The stations file, under the plugin's current data folder. */
     static Path path() {
-        return file.toPath();
+        return file().toPath();
+    }
+
+    private static File file() {
+        return new File(VFBuilders.plugin.getDataFolder(), "data/stations.json");
     }
 
     public static void saveStations(Map<Location, ActiveStation> stations) {
@@ -128,18 +131,18 @@ public class Database {
 
             dataList.add(data);
         }
-        return new Snapshot(snapshots.incrementAndGet(), dataList);
+        return new Snapshot(snapshots.incrementAndGet(), file(), dataList);
     }
 
     private static boolean write(Snapshot snapshot) {
         synchronized (WRITE_LOCK) {
             if (snapshot.sequence() < newestWrite) return true; // A newer snapshot already wrote.
             newestWrite = snapshot.sequence();
-            return writeFile(snapshot.stations());
+            return writeFile(snapshot.target(), snapshot.stations());
         }
     }
 
-    private static boolean writeFile(List<StationData> dataList) {
+    private static boolean writeFile(File file, List<StationData> dataList) {
         try {
             var directory = file.toPath().getParent();
             Files.createDirectories(directory);
@@ -163,11 +166,13 @@ public class Database {
         }
     }
 
-    private record Snapshot(long sequence, List<StationData> stations) {}
+    // The target is resolved on the calling thread, so the writer thread never reads plugin state.
+    private record Snapshot(long sequence, File target, List<StationData> stations) {}
 
     public static HashMap<Location, ActiveStation> loadStations() {
         HashMap<Location, ActiveStation> loaded = new HashMap<>();
 
+        File file = file();
         if (!file.exists()) return loaded;
 
         try (Reader reader = new FileReader(file)) {

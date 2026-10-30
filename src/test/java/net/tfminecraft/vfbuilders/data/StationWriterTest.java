@@ -22,7 +22,6 @@ class StationWriterTest {
     Path folder = DatabaseFixture.folder();
     VFBuilders.plugin = mock(VFBuilders.class);
     when(VFBuilders.plugin.getDataFolder()).thenReturn(folder.toFile());
-    // Database fixes its path when the class first loads, possibly under another test's folder.
     file = Database.path();
     Files.createDirectories(file.getParent());
   }

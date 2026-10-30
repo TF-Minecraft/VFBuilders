@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/** One data directory per JVM, matching Database's static path lifetime. */
+/** One shared data directory per JVM for tests that save stations. */
 public final class DatabaseFixture {
   private static final Path ROOT;
 
