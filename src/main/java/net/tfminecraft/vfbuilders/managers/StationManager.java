@@ -82,7 +82,8 @@ public class StationManager implements Listener {
             @Override
             public void run() {
                 if (stations.values().stream().anyMatch(ActiveStation::hasBlueprint)) {
-                    Database.saveStationsNow(stations);
+                    // Only countdown progress changes between the synchronous checkpoints.
+                    Database.saveStationsLater(stations);
                 }
             }
         }.runTaskTimer(VFBuilders.plugin, 600L, 600L);
@@ -93,6 +94,7 @@ public class StationManager implements Listener {
             station.removeDisplay();
         }
         Database.saveStations(stations);
+        Database.close();
     }
 
     public void rebindAfterReload(Runnable reloadDefinitions) {
