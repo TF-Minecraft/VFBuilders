@@ -16,6 +16,7 @@ import java.io.*;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.*;
@@ -36,6 +37,11 @@ public class Database {
     // Guarded by WRITE_LOCK: the newest snapshot that has started writing.
     private static long newestWrite;
     private static ExecutorService writer;
+
+    /** The stations file; fixed when this class first loads, which is why tests read it from here. */
+    static Path path() {
+        return file.toPath();
+    }
 
     public static void saveStations(Map<Location, ActiveStation> stations) {
         saveStationsNow(stations);
