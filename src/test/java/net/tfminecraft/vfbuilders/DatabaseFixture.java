@@ -5,7 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /** One data directory per JVM, matching Database's static path lifetime. */
-final class DatabaseFixture {
+public final class DatabaseFixture {
   private static final Path ROOT;
 
   static {
@@ -16,7 +16,7 @@ final class DatabaseFixture {
     }
   }
 
-  static Path folder() throws IOException {
+  public static Path folder() throws IOException {
     return Files.createDirectories(ROOT);
   }
 }
