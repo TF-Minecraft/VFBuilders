@@ -247,7 +247,7 @@ public class StationManager implements Listener {
 
             ActivePlacement placement = new ActivePlacement(p, h.getStation(), b);
             activePlacements.put(p.getUniqueId(), placement);
-            p.sendMessage("§aStand where it should be built, within "+Cache.constructionDistance+" blocks of the station, and left-click. Left-click the station to cancel.");
+            p.sendMessage("§aStand where it should be built, within "+Cache.constructionDistance+" blocks of the station, and left-click.");
             startParticleTrail(placement); // Method defined below
         }
     }
@@ -270,15 +270,6 @@ public class StationManager implements Listener {
         if (!isRegistered(placement.getStation())) {
             activePlacements.remove(uuid);
             p.sendMessage("§cBuilding site choice cancelled: the station was removed.");
-            return;
-        }
-
-        // Hitting the station itself cancels the choice instead of building or breaking.
-        Block clicked = e.getClickedBlock();
-        if (clicked != null && clicked.getLocation().equals(stationLoc)) {
-            activePlacements.remove(uuid);
-            e.setCancelled(true);
-            p.sendMessage("§eBuilding site choice cancelled.");
             return;
         }
 

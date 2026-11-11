@@ -513,11 +513,6 @@ class ManagerTest {
     return null;
   }
 
-  PlayerInteractEvent leftClickBlock(Block clicked) {
-    return new PlayerInteractEvent(
-        player, Action.LEFT_CLICK_BLOCK, null, clicked, org.bukkit.block.BlockFace.UP);
-  }
-
   @Test
   void breakingAnIdleStationDuringSiteChoiceCannotStartABuildOnIt() throws Exception {
     var s = manager.getStation(block);
@@ -527,7 +522,7 @@ class ManagerTest {
     player.teleport(block.getLocation());
     manager.inventoryClick(
         click(s, tagged("vfb_blueprint_id", "windrider"), net.tfminecraft.vfbuilders.enums.VFBGUI.BLUEPRINT));
-    assertNotNull(drainMessagesUntil("Left-click the station to cancel"));
+    assertNotNull(drainMessagesUntil("and left-click"));
 
     manager.onBlockBreak(new BlockBreakEvent(block, player));
 
@@ -573,35 +568,6 @@ class ManagerTest {
 
     assertTrue(placements().isEmpty());
     assertNotNull(drainMessagesUntil("nothing can be built there"));
-  }
-
-  @Test
-  void leftClickingTheStationCancelsTheSiteChoiceAndOtherBlocksStillConfirm() throws Exception {
-    var s = manager.getStation(block);
-    var b = mock(Blueprint.class);
-    var vehicle = mock(net.tfminecraft.vehicleframework.vehicles.Vehicle.class);
-    when(vehicle.getName()).thenReturn("Windrider");
-    when(b.getVehicle()).thenReturn(vehicle);
-    when(b.hasInputs(player)).thenReturn(true);
-    player.teleport(block.getLocation());
-    placements().put(player.getUniqueId(), new ActivePlacement(player, s, b));
-
-    var onStation = leftClickBlock(block);
-    manager.onPlayerLeftClick(onStation);
-
-    assertTrue(onStation.isCancelled());
-    assertTrue(placements().isEmpty());
-    verify(b, never()).takeInputs(player);
-    assertFalse(s.hasBlueprint());
-    assertNotNull(drainMessagesUntil("Building site choice cancelled"));
-
-    placements().put(player.getUniqueId(), new ActivePlacement(player, s, b));
-    var elsewhere = leftClickBlock(player.getWorld().getBlockAt(3, 64, 1));
-    manager.onPlayerLeftClick(elsewhere);
-
-    assertFalse(elsewhere.isCancelled());
-    verify(b).takeInputs(player);
-    assertSame(b, s.getBlueprint());
   }
 
   @Test
