@@ -60,6 +60,8 @@ public class StationManager implements Listener {
 
     public ActiveStation getStation(Block b) {
         if(stations.containsKey(b.getLocation())) return stations.get(b.getLocation());
+        // A saved station waiting for its building site's world to load stays inert until then.
+        if (Database.isParkedAt(b.getLocation())) return null;
         BlockChecker checker = TLibs.getBlockAPI().getChecker();
 		for(Station station : StationLoader.get().values()) {
             if(checker.checkBlock(b, station.getBlock())) {

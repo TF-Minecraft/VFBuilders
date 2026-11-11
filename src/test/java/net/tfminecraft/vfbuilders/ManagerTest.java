@@ -68,6 +68,14 @@ class ManagerTest {
   }
 
   @Test
+  void aKeptStationsBlockDoesNotBecomeANewStation() {
+    database.when(() -> Database.isParkedAt(block.getLocation())).thenReturn(true);
+    assertNull(manager.getStation(block)); // inert until its building site's world loads
+    database.when(() -> Database.isParkedAt(block.getLocation())).thenReturn(false);
+    assertNotNull(manager.getStation(block));
+  }
+
+  @Test
   void stationsKeptForAWorldThatLoadsLaterComeBack() {
     var back = new ActiveStation(block.getLocation(), definition);
     var sameSpot = new ActiveStation(block.getLocation(), definition);

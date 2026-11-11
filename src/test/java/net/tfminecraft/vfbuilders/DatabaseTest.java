@@ -193,6 +193,14 @@ class DatabaseTest {
       assertTrue(saved.contains("\"timeLeft\": 7"));
       assertTrue(saved.contains("newerField")); // fields this version does not know survive
       assertEquals(Set.of(loc), Database.loadStations().keySet());
+      // The block of a kept station (its world loaded, its site's not) is known; other blocks are not.
+      assertTrue(Database.isParkedAt(new Location(world, 9, 64, 9)));
+      assertFalse(Database.isParkedAt(new Location(world, 9, 65, 9)));
+      assertFalse(Database.isParkedAt(new Location(world, 9, 64, 8)));
+      assertFalse(Database.isParkedAt(new Location(world, 8, 64, 9)));
+      assertFalse(Database.isParkedAt(new Location(server.addSimpleWorld("third"), 9, 64, 9)));
+      assertFalse(Database.isParkedAt(new Location(null, 9, 64, 9)));
+      assertFalse(Database.isParkedAt(null));
       // Worlds that load later bring their stations back; the rest stay kept.
       assertTrue(Database.activateParked().isEmpty());
       server.addSimpleWorld("site-world");

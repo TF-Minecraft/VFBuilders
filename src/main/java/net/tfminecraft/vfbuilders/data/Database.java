@@ -237,6 +237,22 @@ public class Database {
         return activated;
     }
 
+    /**
+     * Whether a kept record sits at this block. Such a block must not become a new, empty station:
+     * when the record comes back, its saved construction would lose to the new station.
+     */
+    public static boolean isParkedAt(Location loc) {
+        if (loc == null || loc.getWorld() == null) return false;
+        for (JsonObject raw : parked) {
+            SerializableLoc at = gson.fromJson(raw, StationData.class).location;
+            if (at != null && loc.getWorld().getName().equals(at.world)
+                    && loc.getBlockX() == at.x && loc.getBlockY() == at.y && loc.getBlockZ() == at.z) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** The world a saved station needs that is not loaded (its own, then its site's), or null. */
     private static String missingWorld(StationData data) {
         if (data.location == null) return "no location";
