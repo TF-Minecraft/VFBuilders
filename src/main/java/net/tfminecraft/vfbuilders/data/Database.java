@@ -36,6 +36,12 @@ public class Database {
     // Guarded by WRITE_LOCK: the newest snapshot that has started writing.
     private static long newestWrite;
     private static ExecutorService writer;
+    /**
+     * Saved stations whose world is not loaded on this server (a stations file copied from another
+     * server, or a removed world). They are kept unchanged and written back with every save: turning
+     * them into stations without a world made every save fail, which cancelled every build.
+     */
+    private static List<StationData> parked = new ArrayList<>();
 
     /** The stations file, under the plugin's current data folder. */
     static Path path() {
@@ -131,6 +137,7 @@ public class Database {
 
             dataList.add(data);
         }
+        dataList.addAll(parked);
         return new Snapshot(snapshots.incrementAndGet(), file(), dataList);
     }
 
@@ -171,6 +178,7 @@ public class Database {
 
     public static HashMap<Location, ActiveStation> loadStations() {
         HashMap<Location, ActiveStation> loaded = new HashMap<>();
+        parked = new ArrayList<>();
 
         File file = file();
         if (!file.exists()) return loaded;
@@ -179,7 +187,13 @@ public class Database {
             Type listType = new TypeToken<List<StationData>>(){}.getType();
             List<StationData> dataList = gson.fromJson(reader, listType);
 
+            Set<String> unloadedWorlds = new TreeSet<>();
             for (StationData data : dataList) {
+                if (data.location == null || Bukkit.getWorld(String.valueOf(data.location.world)) == null) {
+                    parked.add(data);
+                    unloadedWorlds.add(data.location == null ? "no location" : String.valueOf(data.location.world));
+                    continue;
+                }
                 Location loc = toBukkitLoc(data.location);
                 Station baseStation = StationLoader.getByString(data.stationId);
                 if (baseStation == null) continue;
@@ -197,6 +211,11 @@ public class Database {
                 station.setOutputUuid(data.outputUuid);
 
                 loaded.put(loc, station);
+            }
+            if (!parked.isEmpty()) {
+                VFBuilders.plugin.getLogger().warning("Kept " + parked.size()
+                    + " saved station(s) whose world is not loaded here (" + String.join(", ", unloadedWorlds)
+                    + "); they are saved back unchanged.");
             }
         } catch (IOException e) {
             e.printStackTrace();
