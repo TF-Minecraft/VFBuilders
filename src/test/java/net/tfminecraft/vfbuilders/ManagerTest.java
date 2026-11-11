@@ -68,6 +68,26 @@ class ManagerTest {
   }
 
   @Test
+  void aKeptStationsBlockDoesNotBecomeANewStation() {
+    database.when(() -> Database.isParkedAt(block.getLocation())).thenReturn(true);
+    assertNull(manager.getStation(block)); // inert until its building site's world loads
+    database.when(() -> Database.isParkedAt(block.getLocation())).thenReturn(false);
+    assertNotNull(manager.getStation(block));
+  }
+
+  @Test
+  void stationsKeptForAWorldThatLoadsLaterComeBack() {
+    var back = new ActiveStation(block.getLocation(), definition);
+    var sameSpot = new ActiveStation(block.getLocation(), definition);
+    database.when(Database::activateParked).thenReturn(List.of(back, sameSpot), List.of());
+    var event = new org.bukkit.event.world.WorldLoadEvent(player.getWorld());
+    manager.onWorldLoad(event);
+    assertSame(back, manager.getStation(block)); // the first one at a spot wins
+    manager.onWorldLoad(event); // nothing left to bring back
+    assertSame(back, manager.getStation(block));
+  }
+
+  @Test
   void lookupCachesOnlyMatchingStations() {
     assertNull(manager.getStation(player.getWorld().getBlockAt(9, 1, 1)));
     var s = manager.getStation(block);

@@ -60,6 +60,8 @@ public class StationManager implements Listener {
 
     public ActiveStation getStation(Block b) {
         if(stations.containsKey(b.getLocation())) return stations.get(b.getLocation());
+        // A saved station waiting for its building site's world to load stays inert until then.
+        if (Database.isParkedAt(b.getLocation())) return null;
         BlockChecker checker = TLibs.getBlockAPI().getChecker();
 		for(Station station : StationLoader.get().values()) {
             if(checker.checkBlock(b, station.getBlock())) {
@@ -87,6 +89,19 @@ public class StationManager implements Listener {
                 }
             }
         }.runTaskTimer(VFBuilders.plugin, 600L, 600L);
+    }
+
+    /** A world loaded after startup: its kept stations become stations again, construction and all. */
+    @EventHandler
+    public void onWorldLoad(org.bukkit.event.world.WorldLoadEvent event) {
+        boolean added = false;
+        for (ActiveStation station : Database.activateParked()) {
+            if (stations.putIfAbsent(station.getLocation(), station) == null) {
+                bindCheckpoint(station);
+                added = true;
+            }
+        }
+        if (added) refreshAllDisplays();
     }
 
     public void stop() {

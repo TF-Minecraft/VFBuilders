@@ -153,6 +153,87 @@ class DatabaseTest {
   }
 
   @Test
+  void stationsInWorldsNotLoadedHereAreKeptAndDoNotBreakSaves() throws Exception {
+    var server = MockBukkit.mock();
+    Path temp = DatabaseFixture.folder();
+    try {
+      VFBuilders.plugin = mock(VFBuilders.class);
+      var logger = mock(java.util.logging.Logger.class);
+      when(VFBuilders.plugin.getLogger()).thenReturn(logger);
+      when(VFBuilders.plugin.getDataFolder()).thenReturn(temp.toFile());
+      Files.createDirectories(temp.resolve("data"));
+      var file = temp.resolve("data/stations.json");
+      var world = server.addSimpleWorld("build-world");
+      var loc = new Location(world, 3, 64, 5);
+      var definition = mock(Station.class);
+      when(definition.getId()).thenReturn("dock");
+      StationLoader.get().clear();
+      BlueprintLoader.get().clear();
+      StationLoader.get().put("dock", definition);
+      // A file copied from a server with another world, plus an entry without a location.
+      Files.writeString(
+          file,
+          """
+          [{"location": {"world": "other-map", "x": 408, "y": 281, "z": 1780}, "stationId": "dock", "timeLeft": 7,
+            "newerField": {"kept": true}},
+           {"stationId": "dock", "timeLeft": 0},
+           {"location": {"world": "build-world", "x": 9, "y": 64, "z": 9}, "stationId": "dock",
+            "spawnLocation": {"world": "site-world", "x": 0, "y": 64, "z": 0}},
+           17,
+           {"location": {"world": "build-world", "x": 3, "y": 64, "z": 5}, "stationId": "dock", "timeLeft": 0}]
+          """);
+      var loaded = Database.loadStations();
+      assertEquals(Set.of(loc), loaded.keySet());
+      // a station whose building site is in a missing world is kept too; a stray number is skipped
+      verify(logger).warning(contains("Kept 3 saved station(s) whose world is not loaded here (no location, other-map, site-world)"));
+      // Saving works (it used to throw on the world-less station) and keeps the other server's entries.
+      assertTrue(Database.saveStationsNow(loaded));
+      String saved = Files.readString(file);
+      assertTrue(saved.contains("other-map"));
+      assertTrue(saved.contains("\"timeLeft\": 7"));
+      assertTrue(saved.contains("newerField")); // fields this version does not know survive
+      assertEquals(Set.of(loc), Database.loadStations().keySet());
+      // The block of a kept station (its world loaded, its site's not) is known; other blocks are not.
+      assertTrue(Database.isParkedAt(new Location(world, 9, 64, 9)));
+      assertFalse(Database.isParkedAt(new Location(world, 9, 65, 9)));
+      assertFalse(Database.isParkedAt(new Location(world, 9, 64, 8)));
+      assertFalse(Database.isParkedAt(new Location(world, 8, 64, 9)));
+      assertFalse(Database.isParkedAt(new Location(server.addSimpleWorld("third"), 9, 64, 9)));
+      assertFalse(Database.isParkedAt(new Location(null, 9, 64, 9)));
+      assertFalse(Database.isParkedAt(null));
+      // Worlds that load later bring their stations back; the rest stay kept.
+      assertTrue(Database.activateParked().isEmpty());
+      server.addSimpleWorld("site-world");
+      server.addSimpleWorld("other-map");
+      var back = Database.activateParked();
+      assertEquals(2, back.size()); // the location-less entry stays kept
+      assertTrue(back.stream().anyMatch(s -> s.getLocation().getWorld().getName().equals("other-map") && s.getTimeLeft() == 7));
+      assertTrue(Database.activateParked().isEmpty());
+      // A kept station of a type this server no longer has is dropped when its world loads, as on load.
+      Files.writeString(file, "[{\"location\": {\"world\": \"late-world\", \"x\": 1, \"y\": 2, \"z\": 3}, \"stationId\": \"gone\"}]");
+      assertTrue(Database.loadStations().isEmpty());
+      server.addSimpleWorld("late-world");
+      assertTrue(Database.activateParked().isEmpty());
+      assertTrue(Database.activateParked().isEmpty());
+      // A file that is not a list loads nothing.
+      Files.writeString(file, "{}");
+      assertTrue(Database.loadStations().isEmpty());
+      // A file without such entries logs nothing more.
+      Database.saveStationsNow(Map.of(loc, new ActiveStation(loc, definition)));
+      clearInvocations(logger);
+      Files.writeString(file, "[{\"location\": {\"world\": \"build-world\", \"x\": 3, \"y\": 64, \"z\": 5}, \"stationId\": \"dock\"}]");
+      assertEquals(Set.of(loc), Database.loadStations().keySet());
+      verifyNoInteractions(logger);
+    } finally {
+      VFBuilders.plugin = null;
+      MockBukkit.unmock();
+      try (var paths = Files.walk(temp)) {
+        for (var p : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(p);
+      }
+    }
+  }
+
+  @Test
   void constructorCharacterRoundTripsAndOlderSavesLoadWithoutOne() throws Exception {
     var server = MockBukkit.mock();
     Path temp = DatabaseFixture.folder();
