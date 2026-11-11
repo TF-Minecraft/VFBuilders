@@ -504,4 +504,102 @@ class ManagerTest {
     manager.onBlockBreak(new BlockBreakEvent(block, player));
     verify(b).drop(any());
   }
+
+  String drainMessagesUntil(String fragment) {
+    var mock = (org.mockbukkit.mockbukkit.entity.PlayerMock) player;
+    for (String m = mock.nextMessage(); m != null; m = mock.nextMessage()) {
+      if (m.contains(fragment)) return m;
+    }
+    return null;
+  }
+
+  @Test
+  void breakingAnIdleStationDuringSiteChoiceCannotStartABuildOnIt() throws Exception {
+    var s = manager.getStation(block);
+    var b = mock(Blueprint.class);
+    when(b.hasInputs(player)).thenReturn(true);
+    BlueprintLoader.get().put("windrider", b);
+    player.teleport(block.getLocation());
+    manager.inventoryClick(
+        click(s, tagged("vfb_blueprint_id", "windrider"), net.tfminecraft.vfbuilders.enums.VFBGUI.BLUEPRINT));
+    assertNotNull(drainMessagesUntil("and left-click"));
+
+    manager.onBlockBreak(new BlockBreakEvent(block, player));
+
+    assertTrue(placements().isEmpty());
+    assertNotNull(drainMessagesUntil("the station was removed"));
+    manager.onPlayerLeftClick(left());
+    verify(b, never()).takeInputs(player);
+    assertFalse(s.hasBlueprint());
+    assertNull(s.getSpawnLocation());
+  }
+
+  @Test
+  void stalePlacementOnARemovedStationIsDroppedEvenIfAStationReturnsThere() throws Exception {
+    var old = manager.getStation(block);
+    var b = mock(Blueprint.class);
+    when(b.hasInputs(player)).thenReturn(true);
+    manager.onBlockBreak(new BlockBreakEvent(block, player));
+    var replacement = manager.getStation(block);
+    assertNotSame(old, replacement);
+    player.teleport(block.getLocation());
+    placements().put(player.getUniqueId(), new ActivePlacement(player, old, b));
+
+    manager.onPlayerLeftClick(left());
+
+    assertTrue(placements().isEmpty());
+    verify(b, never()).takeInputs(player);
+    assertFalse(old.hasBlueprint());
+    assertFalse(replacement.hasBlueprint());
+    assertNotNull(drainMessagesUntil("the station was removed"));
+  }
+
+  @Test
+  void blueprintMenuLeftOpenOnARemovedStationStartsNoSiteChoice() throws Exception {
+    var s = manager.getStation(block);
+    var b = mock(Blueprint.class);
+    when(b.hasInputs(player)).thenReturn(true);
+    BlueprintLoader.get().put("boat", b);
+    manager.onBlockBreak(new BlockBreakEvent(block, player));
+    assertNotSame(s, manager.getStation(block)); // a new station now stands on the same spot
+
+    manager.inventoryClick(
+        click(s, tagged("vfb_blueprint_id", "boat"), net.tfminecraft.vfbuilders.enums.VFBGUI.BLUEPRINT));
+
+    assertTrue(placements().isEmpty());
+    assertNotNull(drainMessagesUntil("nothing can be built there"));
+  }
+
+  @Test
+  void removingAStationKeepsSiteChoicesForOtherStations() throws Exception {
+    var other = player.getWorld().getBlockAt(2, 64, 1);
+    when(api.getChecker().checkBlock(other, "v.stone")).thenReturn(true);
+    var s = manager.getStation(block);
+    var otherStation = manager.getStation(other);
+    var second = server.addPlayer();
+    var mine = new ActivePlacement(player, s, mock(Blueprint.class));
+    var theirs = new ActivePlacement(second, otherStation, mock(Blueprint.class));
+    placements().put(player.getUniqueId(), mine);
+    placements().put(second.getUniqueId(), theirs);
+
+    manager.onBlockBreak(new BlockBreakEvent(block, player));
+
+    assertNull(placements().get(player.getUniqueId()));
+    assertSame(theirs, placements().get(second.getUniqueId()));
+  }
+
+  @Test
+  void failedRemovalSaveKeepsTheSiteChoiceForTheRestoredStation() throws Exception {
+    var s = manager.getStation(block);
+    var mine = new ActivePlacement(player, s, mock(Blueprint.class));
+    placements().put(player.getUniqueId(), mine);
+    database.when(() -> Database.saveStationsNow(anyMap())).thenReturn(false);
+    var event = new BlockBreakEvent(block, player);
+
+    manager.onBlockBreak(event);
+
+    assertTrue(event.isCancelled());
+    assertSame(s, manager.getStation(block));
+    assertSame(mine, placements().get(player.getUniqueId()));
+  }
 }

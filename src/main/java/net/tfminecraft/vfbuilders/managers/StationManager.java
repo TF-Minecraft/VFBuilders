@@ -240,6 +240,10 @@ public class StationManager implements Listener {
                 return;
             }
             p.closeInventory();
+            if (!isRegistered(h.getStation())) {
+                p.sendMessage("§cThe station was removed, so nothing can be built there.");
+                return;
+            }
 
             ActivePlacement placement = new ActivePlacement(p, h.getStation(), b);
             activePlacements.put(p.getUniqueId(), placement);
@@ -262,6 +266,12 @@ public class StationManager implements Listener {
         ActivePlacement placement = activePlacements.get(uuid);
         Location stationLoc = placement.getStation().getLocation();
         Location clickLoc = p.getLocation();
+
+        if (!isRegistered(placement.getStation())) {
+            activePlacements.remove(uuid);
+            p.sendMessage("§cBuilding site choice cancelled: the station was removed.");
+            return;
+        }
 
         if (!java.util.Objects.equals(clickLoc.getWorld(), stationLoc.getWorld())
                 || clickLoc.distanceSquared(stationLoc) > Math.pow(Cache.constructionDistance, 2)) {
@@ -430,7 +440,17 @@ public class StationManager implements Listener {
             stations.put(loc, station);
             return false;
         }
+        // A site choice for the removed station must not start a build on it later.
+        activePlacements.values().removeIf(placement -> {
+            if (placement.getStation() != station) return false;
+            placement.getPlayer().sendMessage("§cBuilding site choice cancelled: the station was removed.");
+            return true;
+        });
         return true;
+    }
+
+    private boolean isRegistered(ActiveStation station) {
+        return stations.get(station.getLocation()) == station;
     }
 
 }
