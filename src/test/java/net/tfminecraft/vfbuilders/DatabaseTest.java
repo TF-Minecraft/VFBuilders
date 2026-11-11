@@ -174,19 +174,42 @@ class DatabaseTest {
       Files.writeString(
           file,
           """
-          [{"location": {"world": "other-map", "x": 408, "y": 281, "z": 1780}, "stationId": "dock", "timeLeft": 7},
+          [{"location": {"world": "other-map", "x": 408, "y": 281, "z": 1780}, "stationId": "dock", "timeLeft": 7,
+            "newerField": {"kept": true}},
            {"stationId": "dock", "timeLeft": 0},
+           {"location": {"world": "build-world", "x": 9, "y": 64, "z": 9}, "stationId": "dock",
+            "spawnLocation": {"world": "site-world", "x": 0, "y": 64, "z": 0}},
+           17,
            {"location": {"world": "build-world", "x": 3, "y": 64, "z": 5}, "stationId": "dock", "timeLeft": 0}]
           """);
       var loaded = Database.loadStations();
       assertEquals(Set.of(loc), loaded.keySet());
-      verify(logger).warning(contains("Kept 2 saved station(s) whose world is not loaded here (no location, other-map)"));
+      // a station whose building site is in a missing world is kept too; a stray number is skipped
+      verify(logger).warning(contains("Kept 3 saved station(s) whose world is not loaded here (no location, other-map, site-world)"));
       // Saving works (it used to throw on the world-less station) and keeps the other server's entries.
       assertTrue(Database.saveStationsNow(loaded));
       String saved = Files.readString(file);
       assertTrue(saved.contains("other-map"));
       assertTrue(saved.contains("\"timeLeft\": 7"));
+      assertTrue(saved.contains("newerField")); // fields this version does not know survive
       assertEquals(Set.of(loc), Database.loadStations().keySet());
+      // Worlds that load later bring their stations back; the rest stay kept.
+      assertTrue(Database.activateParked().isEmpty());
+      server.addSimpleWorld("site-world");
+      server.addSimpleWorld("other-map");
+      var back = Database.activateParked();
+      assertEquals(2, back.size()); // the location-less entry stays kept
+      assertTrue(back.stream().anyMatch(s -> s.getLocation().getWorld().getName().equals("other-map") && s.getTimeLeft() == 7));
+      assertTrue(Database.activateParked().isEmpty());
+      // A kept station of a type this server no longer has is dropped when its world loads, as on load.
+      Files.writeString(file, "[{\"location\": {\"world\": \"late-world\", \"x\": 1, \"y\": 2, \"z\": 3}, \"stationId\": \"gone\"}]");
+      assertTrue(Database.loadStations().isEmpty());
+      server.addSimpleWorld("late-world");
+      assertTrue(Database.activateParked().isEmpty());
+      assertTrue(Database.activateParked().isEmpty());
+      // A file that is not a list loads nothing.
+      Files.writeString(file, "{}");
+      assertTrue(Database.loadStations().isEmpty());
       // A file without such entries logs nothing more.
       Database.saveStationsNow(Map.of(loc, new ActiveStation(loc, definition)));
       clearInvocations(logger);

@@ -2,7 +2,10 @@ package net.tfminecraft.vfbuilders.data;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -13,7 +16,6 @@ import net.tfminecraft.vfbuilders.core.Station;
 import net.tfminecraft.vfbuilders.loaders.StationLoader;
 
 import java.io.*;
-import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,11 +39,12 @@ public class Database {
     private static long newestWrite;
     private static ExecutorService writer;
     /**
-     * Saved stations whose world is not loaded on this server (a stations file copied from another
-     * server, or a removed world). They are kept unchanged and written back with every save: turning
-     * them into stations without a world made every save fail, which cancelled every build.
+     * Saved stations whose world (or building site's world) is not loaded on this server: a stations
+     * file copied from another server, or a world that is not loaded yet. Their JSON is kept exactly
+     * as read and written back with every save, and they become stations again when their worlds
+     * load. Turning them into stations without a world made every save fail, cancelling every build.
      */
-    private static List<StationData> parked = new ArrayList<>();
+    private static List<JsonObject> parked = new ArrayList<>();
 
     /** The stations file, under the plugin's current data folder. */
     static Path path() {
@@ -137,8 +140,14 @@ public class Database {
 
             dataList.add(data);
         }
-        dataList.addAll(parked);
-        return new Snapshot(snapshots.incrementAndGet(), file(), dataList);
+        JsonArray records = new JsonArray();
+        for (StationData data : dataList) {
+            records.add(gson.toJsonTree(data));
+        }
+        for (JsonObject raw : parked) {
+            records.add(raw.deepCopy());
+        }
+        return new Snapshot(snapshots.incrementAndGet(), file(), records);
     }
 
     private static boolean write(Snapshot snapshot) {
@@ -149,7 +158,7 @@ public class Database {
         }
     }
 
-    private static boolean writeFile(File file, List<StationData> dataList) {
+    private static boolean writeFile(File file, JsonArray records) {
         try {
             var directory = file.toPath().getParent();
             Files.createDirectories(directory);
@@ -157,7 +166,7 @@ public class Database {
             boolean replaced = false;
             try {
                 try (FileOutputStream output = new FileOutputStream(temporary.toFile())) {
-                    output.write(gson.toJson(dataList).getBytes(StandardCharsets.UTF_8));
+                    output.write(gson.toJson(records).getBytes(StandardCharsets.UTF_8));
                     output.getFD().sync();
                 }
                 Files.move(temporary, file.toPath(),
@@ -174,7 +183,7 @@ public class Database {
     }
 
     // The target is resolved on the calling thread, so the writer thread never reads plugin state.
-    private record Snapshot(long sequence, File target, List<StationData> stations) {}
+    private record Snapshot(long sequence, File target, JsonArray stations) {}
 
     public static HashMap<Location, ActiveStation> loadStations() {
         HashMap<Location, ActiveStation> loaded = new HashMap<>();
@@ -184,44 +193,75 @@ public class Database {
         if (!file.exists()) return loaded;
 
         try (Reader reader = new FileReader(file)) {
-            Type listType = new TypeToken<List<StationData>>(){}.getType();
-            List<StationData> dataList = gson.fromJson(reader, listType);
-
+            JsonElement root = JsonParser.parseReader(reader);
             Set<String> unloadedWorlds = new TreeSet<>();
-            for (StationData data : dataList) {
-                if (data.location == null || Bukkit.getWorld(String.valueOf(data.location.world)) == null) {
-                    parked.add(data);
-                    unloadedWorlds.add(data.location == null ? "no location" : String.valueOf(data.location.world));
+            for (JsonElement element : root.isJsonArray() ? root.getAsJsonArray() : new JsonArray()) {
+                if (!element.isJsonObject()) continue;
+                JsonObject raw = element.getAsJsonObject();
+                StationData data = gson.fromJson(raw, StationData.class);
+                String missing = missingWorld(data);
+                if (missing != null) {
+                    parked.add(raw);
+                    unloadedWorlds.add(missing);
                     continue;
                 }
-                Location loc = toBukkitLoc(data.location);
-                Station baseStation = StationLoader.getByString(data.stationId);
-                if (baseStation == null) continue;
-
-                ActiveStation station = new ActiveStation(
-                    loc,
-                    baseStation,
-                    data.blueprintId,
-                    data.timeLeft,
-                    data.spawnLocation != null ? toBukkitLoc(data.spawnLocation) : null,
-                    toUuid(data.constructorUuid),
-                    // Stations saved before 2.2.0 have no character; SimpleFactions resolves the heir.
-                    toUuid(data.constructorCharacterId)
-                );
-                station.setOutputUuid(data.outputUuid);
-
-                loaded.put(loc, station);
+                ActiveStation station = toStation(data);
+                if (station != null) loaded.put(station.getLocation(), station);
             }
             if (!parked.isEmpty()) {
                 VFBuilders.plugin.getLogger().warning("Kept " + parked.size()
                     + " saved station(s) whose world is not loaded here (" + String.join(", ", unloadedWorlds)
-                    + "); they are saved back unchanged.");
+                    + "); they are saved back unchanged and come back when the world loads.");
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         return loaded;
+    }
+
+    /**
+     * Kept stations whose worlds are loaded now (a world loaded after startup), as stations; they
+     * leave the kept list. Unknown station types are dropped, as on a normal load.
+     */
+    public static List<ActiveStation> activateParked() {
+        List<ActiveStation> activated = new ArrayList<>();
+        Iterator<JsonObject> kept = parked.iterator();
+        while (kept.hasNext()) {
+            StationData data = gson.fromJson(kept.next(), StationData.class);
+            if (missingWorld(data) != null) continue;
+            kept.remove();
+            ActiveStation station = toStation(data);
+            if (station != null) activated.add(station);
+        }
+        return activated;
+    }
+
+    /** The world a saved station needs that is not loaded (its own, then its site's), or null. */
+    private static String missingWorld(StationData data) {
+        if (data.location == null) return "no location";
+        if (Bukkit.getWorld(String.valueOf(data.location.world)) == null) return String.valueOf(data.location.world);
+        if (data.spawnLocation != null && Bukkit.getWorld(String.valueOf(data.spawnLocation.world)) == null) {
+            return String.valueOf(data.spawnLocation.world);
+        }
+        return null;
+    }
+
+    private static ActiveStation toStation(StationData data) {
+        Station baseStation = StationLoader.getByString(data.stationId);
+        if (baseStation == null) return null;
+        ActiveStation station = new ActiveStation(
+            toBukkitLoc(data.location),
+            baseStation,
+            data.blueprintId,
+            data.timeLeft,
+            data.spawnLocation != null ? toBukkitLoc(data.spawnLocation) : null,
+            toUuid(data.constructorUuid),
+            // Stations saved before 2.2.0 have no character; SimpleFactions resolves the heir.
+            toUuid(data.constructorCharacterId)
+        );
+        station.setOutputUuid(data.outputUuid);
+        return station;
     }
 
     // === Serializable Helpers ===
