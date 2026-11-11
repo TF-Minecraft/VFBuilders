@@ -504,4 +504,120 @@ class ManagerTest {
     manager.onBlockBreak(new BlockBreakEvent(block, player));
     verify(b).drop(any());
   }
+
+  String drainMessagesUntil(String fragment) {
+    var mock = (org.mockbukkit.mockbukkit.entity.PlayerMock) player;
+    for (String m = mock.nextMessage(); m != null; m = mock.nextMessage()) {
+      if (m.contains(fragment)) return m;
+    }
+    return null;
+  }
+
+  PlayerInteractEvent leftClickBlock(Block clicked) {
+    return new PlayerInteractEvent(
+        player, Action.LEFT_CLICK_BLOCK, null, clicked, org.bukkit.block.BlockFace.UP);
+  }
+
+  @Test
+  void breakingAnIdleStationDuringSiteChoiceCannotStartABuildOnIt() throws Exception {
+    var s = manager.getStation(block);
+    var b = mock(Blueprint.class);
+    when(b.hasInputs(player)).thenReturn(true);
+    BlueprintLoader.get().put("windrider", b);
+    player.teleport(block.getLocation());
+    manager.inventoryClick(
+        click(s, tagged("vfb_blueprint_id", "windrider"), net.tfminecraft.vfbuilders.enums.VFBGUI.BLUEPRINT));
+    assertNotNull(drainMessagesUntil("Left-click the station to cancel"));
+
+    manager.onBlockBreak(new BlockBreakEvent(block, player));
+
+    assertTrue(placements().isEmpty());
+    assertNotNull(drainMessagesUntil("no building site was chosen"));
+    manager.onPlayerLeftClick(left());
+    verify(b, never()).takeInputs(player);
+    assertFalse(s.hasBlueprint());
+    assertNull(s.getSpawnLocation());
+  }
+
+  @Test
+  void stalePlacementOnARemovedStationIsDroppedEvenIfAStationReturnsThere() throws Exception {
+    var old = manager.getStation(block);
+    var b = mock(Blueprint.class);
+    when(b.hasInputs(player)).thenReturn(true);
+    manager.onBlockBreak(new BlockBreakEvent(block, player));
+    var replacement = manager.getStation(block);
+    assertNotSame(old, replacement);
+    player.teleport(block.getLocation());
+    placements().put(player.getUniqueId(), new ActivePlacement(player, old, b));
+
+    manager.onPlayerLeftClick(left());
+
+    assertTrue(placements().isEmpty());
+    verify(b, never()).takeInputs(player);
+    assertFalse(old.hasBlueprint());
+    assertFalse(replacement.hasBlueprint());
+    assertNotNull(drainMessagesUntil("no building site was chosen"));
+  }
+
+  @Test
+  void blueprintMenuLeftOpenOnARemovedStationStartsNoSiteChoice() throws Exception {
+    var s = manager.getStation(block);
+    var b = mock(Blueprint.class);
+    when(b.hasInputs(player)).thenReturn(true);
+    BlueprintLoader.get().put("boat", b);
+    manager.onBlockBreak(new BlockBreakEvent(block, player));
+
+    manager.inventoryClick(
+        click(s, tagged("vfb_blueprint_id", "boat"), net.tfminecraft.vfbuilders.enums.VFBGUI.BLUEPRINT));
+
+    assertTrue(placements().isEmpty());
+    assertNotNull(drainMessagesUntil("nothing can be built there"));
+  }
+
+  @Test
+  void leftClickingTheStationCancelsTheSiteChoiceAndOtherBlocksStillConfirm() throws Exception {
+    var s = manager.getStation(block);
+    var b = mock(Blueprint.class);
+    var vehicle = mock(net.tfminecraft.vehicleframework.vehicles.Vehicle.class);
+    when(vehicle.getName()).thenReturn("Windrider");
+    when(b.getVehicle()).thenReturn(vehicle);
+    when(b.hasInputs(player)).thenReturn(true);
+    player.teleport(block.getLocation());
+    placements().put(player.getUniqueId(), new ActivePlacement(player, s, b));
+
+    var onStation = leftClickBlock(block);
+    manager.onPlayerLeftClick(onStation);
+
+    assertTrue(onStation.isCancelled());
+    assertTrue(placements().isEmpty());
+    verify(b, never()).takeInputs(player);
+    assertFalse(s.hasBlueprint());
+    assertNotNull(drainMessagesUntil("Building site choice cancelled"));
+
+    placements().put(player.getUniqueId(), new ActivePlacement(player, s, b));
+    var elsewhere = leftClickBlock(player.getWorld().getBlockAt(3, 64, 1));
+    manager.onPlayerLeftClick(elsewhere);
+
+    assertFalse(elsewhere.isCancelled());
+    verify(b).takeInputs(player);
+    assertSame(b, s.getBlueprint());
+  }
+
+  @Test
+  void removingAStationKeepsSiteChoicesForOtherStations() throws Exception {
+    var other = player.getWorld().getBlockAt(2, 64, 1);
+    when(api.getChecker().checkBlock(other, "v.stone")).thenReturn(true);
+    var s = manager.getStation(block);
+    var otherStation = manager.getStation(other);
+    var second = server.addPlayer();
+    var mine = new ActivePlacement(player, s, mock(Blueprint.class));
+    var theirs = new ActivePlacement(second, otherStation, mock(Blueprint.class));
+    placements().put(player.getUniqueId(), mine);
+    placements().put(second.getUniqueId(), theirs);
+
+    manager.onBlockBreak(new BlockBreakEvent(block, player));
+
+    assertNull(placements().get(player.getUniqueId()));
+    assertSame(theirs, placements().get(second.getUniqueId()));
+  }
 }

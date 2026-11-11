@@ -240,10 +240,14 @@ public class StationManager implements Listener {
                 return;
             }
             p.closeInventory();
+            if (!isRegistered(h.getStation())) {
+                p.sendMessage("§cThe station is gone, so nothing can be built there.");
+                return;
+            }
 
             ActivePlacement placement = new ActivePlacement(p, h.getStation(), b);
             activePlacements.put(p.getUniqueId(), placement);
-            p.sendMessage("§aStand where it should be built, within "+Cache.constructionDistance+" blocks of the station, and left-click.");
+            p.sendMessage("§aStand where it should be built, within "+Cache.constructionDistance+" blocks of the station, and left-click. Left-click the station to cancel.");
             startParticleTrail(placement); // Method defined below
         }
     }
@@ -262,6 +266,21 @@ public class StationManager implements Listener {
         ActivePlacement placement = activePlacements.get(uuid);
         Location stationLoc = placement.getStation().getLocation();
         Location clickLoc = p.getLocation();
+
+        if (!isRegistered(placement.getStation())) {
+            activePlacements.remove(uuid);
+            p.sendMessage("§cThe station is gone, so no building site was chosen.");
+            return;
+        }
+
+        // Hitting the station itself cancels the choice instead of building or breaking.
+        Block clicked = e.getClickedBlock();
+        if (clicked != null && clicked.getLocation().equals(stationLoc)) {
+            activePlacements.remove(uuid);
+            e.setCancelled(true);
+            p.sendMessage("§eBuilding site choice cancelled.");
+            return;
+        }
 
         if (!java.util.Objects.equals(clickLoc.getWorld(), stationLoc.getWorld())
                 || clickLoc.distanceSquared(stationLoc) > Math.pow(Cache.constructionDistance, 2)) {
@@ -430,7 +449,17 @@ public class StationManager implements Listener {
             stations.put(loc, station);
             return false;
         }
+        // A site choice for the removed station must not start a build on it later.
+        activePlacements.values().removeIf(placement -> {
+            if (placement.getStation() != station) return false;
+            placement.getPlayer().sendMessage("§cThe station is gone, so no building site was chosen.");
+            return true;
+        });
         return true;
+    }
+
+    private boolean isRegistered(ActiveStation station) {
+        return stations.get(station.getLocation()) == station;
     }
 
 }
