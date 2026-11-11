@@ -532,7 +532,7 @@ class ManagerTest {
     manager.onBlockBreak(new BlockBreakEvent(block, player));
 
     assertTrue(placements().isEmpty());
-    assertNotNull(drainMessagesUntil("no building site was chosen"));
+    assertNotNull(drainMessagesUntil("the station was removed"));
     manager.onPlayerLeftClick(left());
     verify(b, never()).takeInputs(player);
     assertFalse(s.hasBlueprint());
@@ -556,7 +556,7 @@ class ManagerTest {
     verify(b, never()).takeInputs(player);
     assertFalse(old.hasBlueprint());
     assertFalse(replacement.hasBlueprint());
-    assertNotNull(drainMessagesUntil("no building site was chosen"));
+    assertNotNull(drainMessagesUntil("the station was removed"));
   }
 
   @Test
@@ -566,6 +566,7 @@ class ManagerTest {
     when(b.hasInputs(player)).thenReturn(true);
     BlueprintLoader.get().put("boat", b);
     manager.onBlockBreak(new BlockBreakEvent(block, player));
+    assertNotSame(s, manager.getStation(block)); // a new station now stands on the same spot
 
     manager.inventoryClick(
         click(s, tagged("vfb_blueprint_id", "boat"), net.tfminecraft.vfbuilders.enums.VFBGUI.BLUEPRINT));
@@ -619,5 +620,20 @@ class ManagerTest {
 
     assertNull(placements().get(player.getUniqueId()));
     assertSame(theirs, placements().get(second.getUniqueId()));
+  }
+
+  @Test
+  void failedRemovalSaveKeepsTheSiteChoiceForTheRestoredStation() throws Exception {
+    var s = manager.getStation(block);
+    var mine = new ActivePlacement(player, s, mock(Blueprint.class));
+    placements().put(player.getUniqueId(), mine);
+    database.when(() -> Database.saveStationsNow(anyMap())).thenReturn(false);
+    var event = new BlockBreakEvent(block, player);
+
+    manager.onBlockBreak(event);
+
+    assertTrue(event.isCancelled());
+    assertSame(s, manager.getStation(block));
+    assertSame(mine, placements().get(player.getUniqueId()));
   }
 }

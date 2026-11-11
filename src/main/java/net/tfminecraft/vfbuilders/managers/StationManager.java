@@ -241,7 +241,7 @@ public class StationManager implements Listener {
             }
             p.closeInventory();
             if (!isRegistered(h.getStation())) {
-                p.sendMessage("§cThe station is gone, so nothing can be built there.");
+                p.sendMessage("§cThe station was removed, so nothing can be built there.");
                 return;
             }
 
@@ -269,7 +269,7 @@ public class StationManager implements Listener {
 
         if (!isRegistered(placement.getStation())) {
             activePlacements.remove(uuid);
-            p.sendMessage("§cThe station is gone, so no building site was chosen.");
+            p.sendMessage("§cBuilding site choice cancelled: the station was removed.");
             return;
         }
 
@@ -452,7 +452,7 @@ public class StationManager implements Listener {
         // A site choice for the removed station must not start a build on it later.
         activePlacements.values().removeIf(placement -> {
             if (placement.getStation() != station) return false;
-            placement.getPlayer().sendMessage("§cThe station is gone, so no building site was chosen.");
+            placement.getPlayer().sendMessage("§cBuilding site choice cancelled: the station was removed.");
             return true;
         });
         return true;
