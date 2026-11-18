@@ -7,6 +7,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
 
 import net.tfminecraft.vfbuilders.api.ConstructionFreezes;
@@ -199,6 +200,14 @@ public class ActiveStation {
     }
 
     public void cancelConstruction() {
+        cancelConstruction(null);
+    }
+
+    /**
+     * Cancels the build. The materials go to {@code refundTo} when set (any that do not fit drop at
+     * their feet), otherwise they drop at the station.
+     */
+    public void cancelConstruction(Player refundTo) {
         if (outputUuid != null) {
             VehiclePersistence persistence = VehiclePersistence.current();
             if (persistence != null && persistence.repository().find(outputUuid).isPresent()) {
@@ -215,7 +224,8 @@ public class ActiveStation {
         UUID character = constructorCharacterId;
         if (!clearConstructionDurably()) return;
         if (cancelled != null) {
-            cancelled.drop(loc.clone().add(0.5, 1, 0.5));
+            if (refundTo != null) cancelled.give(refundTo);
+            else cancelled.drop(loc.clone().add(0.5, 1, 0.5));
             Bukkit.getPluginManager().callEvent(
                 new VehicleConstructionCancelEvent(
                     account, character, cancelled, this));
@@ -322,6 +332,24 @@ public class ActiveStation {
             return;
         }
         cancelConstruction();
+    }
+
+    /** True while cancelling still refunds: time is left and no vehicle has been spawned. */
+    public boolean isCancellable() {
+        return blueprint != null && outputUuid == null && timeLeft > 0;
+    }
+
+    /**
+     * True for the account that started the build, playing the character it was started as
+     * (any character of that account when none was recorded).
+     */
+    public boolean isConstructor(UUID account, UUID character) {
+        return constructorUuid != null && constructorUuid.equals(account)
+            && (constructorCharacterId == null || constructorCharacterId.equals(character));
+    }
+
+    public String getFreezeReason() {
+        return freezeReason;
     }
 
     public void setConstructorUuid(UUID constructorUuid) {

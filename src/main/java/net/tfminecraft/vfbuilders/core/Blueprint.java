@@ -171,4 +171,21 @@ public class Blueprint {
             loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 1, 0.5), item);
         }
     }
+
+    /** Gives the inputs back to the player in normal stacks; whatever does not fit drops at their feet. */
+    public void give(Player p) {
+        for (Map.Entry<String, Integer> entry : inputs.entrySet()) {
+            ItemStack item = api.getCreator().getItemFromPath(entry.getKey());
+            int left = entry.getValue();
+            while (left > 0) {
+                ItemStack stack = item.clone();
+                stack.setAmount(Math.min(left, item.getMaxStackSize()));
+                left -= stack.getAmount();
+                for (ItemStack spill : p.getInventory().addItem(stack).values()) {
+                    p.getWorld().dropItemNaturally(p.getLocation(), spill);
+                }
+            }
+        }
+        p.playSound(p, Sound.BLOCK_BARREL_CLOSE, 1f, 1.3f);
+    }
 }

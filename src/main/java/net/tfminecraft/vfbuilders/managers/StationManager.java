@@ -57,6 +57,7 @@ public class StationManager implements Listener {
     private final Map<UUID, ActivePlacement> activePlacements = new HashMap<>();
 
     InventoryManager inv = new InventoryManager();
+    static final String CANCEL_OTHERS = "vfbuilders.cancel.others";
 
     public ActiveStation getStation(Block b) {
         if(stations.containsKey(b.getLocation())) return stations.get(b.getLocation());
@@ -216,9 +217,23 @@ public class StationManager implements Listener {
         ActiveStation station = getStation(b);
         if(station == null) return;
         e.setCancelled(true);
-        if(!station.hasBlueprint()) {
+        openStationMenu(p, station);
+    }
+
+    private void openStationMenu(Player p, ActiveStation station) {
+        if (!station.hasBlueprint()) {
             inv.categoryView(null, p, station, true);
+        } else {
+            inv.progressView(p, station, canCancel(p, station), isBuilder(p, station));
         }
+    }
+
+    private static boolean isBuilder(Player p, ActiveStation station) {
+        return station.isConstructor(p.getUniqueId(), ConstructorCharacter.of(p));
+    }
+
+    private static boolean canCancel(Player p, ActiveStation station) {
+        return isBuilder(p, station) || p.hasPermission(CANCEL_OTHERS);
     }
 
     @EventHandler
@@ -232,6 +247,9 @@ public class StationManager implements Listener {
         if(i.getType().equals(Material.BARRIER)) {
             if(h.getType().equals(VFBGUI.BLUEPRINT)) {
                 inv.categoryView(null, p, h.getStation(), true);
+            } else if (h.getType().equals(VFBGUI.CONFIRM_CANCEL)) {
+                if (isRegistered(h.getStation())) openStationMenu(p, h.getStation());
+                else p.closeInventory();
             }
             p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1f);
             return;
@@ -243,6 +261,18 @@ public class StationManager implements Listener {
             BlueprintCategory cat = CategoryLoader.getByString(id);
             inv.blueprintView(null, p, cat, h.getStation(), true);
             p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1f);
+            return;
+        }
+        String action = m.getPersistentDataContainer().get(
+            new NamespacedKey(VFBuilders.plugin, "vfb_action"), PersistentDataType.STRING);
+        if ("cancel".equals(action)) {
+            if (buildStillCancellable(p, h)) {
+                inv.confirmCancelView(p, h.getStation(), h.getBuild(), isBuilder(p, h.getStation()));
+            }
+            return;
+        }
+        if ("confirm_cancel".equals(action)) {
+            if (buildStillCancellable(p, h)) cancelFromMenu(p, h.getStation());
             return;
         }
         key = new NamespacedKey(VFBuilders.plugin, "vfb_blueprint_id");
@@ -340,12 +370,43 @@ public class StationManager implements Listener {
             + " blueprint=" + blueprint.getId() + " account=" + p.getUniqueId()
             + " character=" + characterId);
         p.sendMessage("§aBuilding site chosen!");
+        p.sendMessage("§7Right-click the station to see progress or cancel the build.");
         p.sendTitle("", "§eStarted Constructing "+blueprint.getVehicle().getName(), 10, 60, 10);
         p.playSound(p, Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
         activePlacements.remove(uuid);
     }
 
 
+
+    /** The menu's build is still running on a registered station and this player may cancel it. */
+    private boolean buildStillCancellable(Player p, VFBHolder h) {
+        ActiveStation station = h.getStation();
+        if (h.getBuild() != null && isRegistered(station) && station.getBlueprint() == h.getBuild()
+                && station.isCancellable() && canCancel(p, station)) {
+            return true;
+        }
+        p.closeInventory();
+        p.sendMessage("§cThis build can no longer be cancelled.");
+        return false;
+    }
+
+    private void cancelFromMenu(Player p, ActiveStation station) {
+        p.closeInventory();
+        Blueprint blueprint = station.getBlueprint();
+        UUID account = station.getConstructorUuid();
+        boolean builder = isBuilder(p, station);
+        station.cancelConstruction(builder ? p : null);
+        if (station.hasBlueprint()) {
+            p.sendMessage("§cThe build could not be cancelled right now. Try again.");
+            return;
+        }
+        VFLogger.info(VFBuilders.plugin, "Construction cancelled from the menu: station=" + station.getLocation()
+            + " blueprint=" + blueprint.getId() + " builder=" + account + " by=" + p.getUniqueId());
+        p.sendMessage(builder
+            ? "§aConstruction cancelled. Your materials were returned; any that did not fit are at your feet."
+            : "§aConstruction cancelled. The materials were dropped at the station.");
+        p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASS, 1f, 1f);
+    }
 
     private void startParticleTrail(ActivePlacement placement) {
         Player player = placement.getPlayer();

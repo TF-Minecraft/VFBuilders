@@ -89,6 +89,82 @@ public class InventoryManager {
 		}
 	} 
 
+	/**
+	 * Shows a building station's progress. The cancel button appears only when {@code canCancel}
+	 * and the build can still be cancelled; {@code builder} picks where its lore says the materials go.
+	 */
+	// Keep the existing legacy text representation, formatting, and exact-string comparisons.
+	@SuppressWarnings("deprecation")
+	public void progressView(Player p, ActiveStation s, boolean canCancel, boolean builder) {
+		Blueprint b = s.getBlueprint();
+		Inventory i = VFBuilders.plugin.getServer().createInventory(new VFBHolder(s, VFBGUI.PROGRESS, b), 27, "§7Construction");
+		ItemStack info = b.getItem().clone();
+		ItemMeta m = info.getItemMeta();
+		m.setDisplayName("§eConstructing §6" + b.getVehicle().getName());
+		List<String> lore = new ArrayList<>();
+		if (s.isCancellable()) {
+			lore.add("§7Time left: §f" + TimeFormatter.formatTime(s.getTimeLeft()));
+			if (s.getFreezeReason() != null) lore.add("§cPaused: §7" + s.getFreezeReason());
+			if (!canCancel) lore.add("§7Only the builder or staff can cancel it.");
+		} else {
+			lore.add("§aFinished: the vehicle appears when a player is near.");
+		}
+		m.setLore(lore);
+		info.setItemMeta(m);
+		i.setItem(11, info);
+		if (canCancel && s.isCancellable()) {
+			i.setItem(15, actionButton(Material.RED_CONCRETE, "§cCancel construction", "cancel", builder));
+		}
+		fill(i);
+		p.openInventory(i);
+	}
+
+	/** Asks for confirmation before cancelling; the barrier goes back to the progress view. */
+	// Keep the existing legacy text representation, formatting, and exact-string comparisons.
+	@SuppressWarnings("deprecation")
+	public void confirmCancelView(Player p, ActiveStation s, Blueprint build, boolean builder) {
+		Inventory i = VFBuilders.plugin.getServer().createInventory(new VFBHolder(s, VFBGUI.CONFIRM_CANCEL, build), 27, "§7Cancel this build?");
+		i.setItem(11, actionButton(Material.RED_WOOL, "§cYes, cancel the build", "confirm_cancel", builder));
+		ItemStack back = createBackButton();
+		ItemMeta m = back.getItemMeta();
+		m.setDisplayName("§aNo, keep building");
+		back.setItemMeta(m);
+		i.setItem(15, back);
+		fill(i);
+		p.openInventory(i);
+	}
+
+	// Keep the existing legacy text representation, formatting, and exact-string comparisons.
+	@SuppressWarnings("deprecation")
+	private ItemStack actionButton(Material type, String name, String action, boolean builder) {
+		ItemStack i = new ItemStack(type);
+		ItemMeta m = i.getItemMeta();
+		m.setDisplayName(name);
+		m.getPersistentDataContainer().set(new NamespacedKey(VFBuilders.plugin, "vfb_action"), PersistentDataType.STRING, action);
+		if (builder) {
+			m.setLore(List.of("§7Stops the build. Your materials go back to", "§7your inventory; any that don't fit drop",
+				"§7at your feet. A registration fee paid", "§7for this build is refunded."));
+		} else {
+			m.setLore(List.of("§7Stops the build. The materials drop at", "§7the station, and a registration fee",
+				"§7paid for it goes back to the builder."));
+		}
+		i.setItemMeta(m);
+		return i;
+	}
+
+	// Keep the existing legacy text representation, formatting, and exact-string comparisons.
+	@SuppressWarnings("deprecation")
+	private void fill(Inventory i) {
+		for (int x = 0; x < i.getSize(); x++) {
+			if (i.getItem(x) != null) continue;
+			ItemStack fill = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+			ItemMeta fm = fill.getItemMeta();
+			fm.setDisplayName("§8 ");
+			fill.setItemMeta(fm);
+			i.setItem(x, fill);
+		}
+	}
+
 	// Keep the existing legacy text representation, formatting, and exact-string comparisons.
 	@SuppressWarnings("deprecation")
 	private ItemStack createBackButton() {

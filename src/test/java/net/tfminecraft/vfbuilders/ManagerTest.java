@@ -461,7 +461,7 @@ class ManagerTest {
   }
 
   @Test
-  void rightClickOpensOnlyAnIdleStation() throws Exception {
+  void rightClickOpensBlueprintsWhenIdleAndProgressWhenBuilding() throws Exception {
     var field = StationManager.class.getDeclaredField("inv");
     field.setAccessible(true);
     var menus = mock(InventoryManager.class);
@@ -484,6 +484,7 @@ class ManagerTest {
     assertTrue(e.isCancelled());
     s.selectBlueprint(mock(Blueprint.class), null);
     manager.stationInteract(e);
+    verify(menus).progressView(player, s, false, false);
     verifyNoMoreInteractions(menus);
   }
 

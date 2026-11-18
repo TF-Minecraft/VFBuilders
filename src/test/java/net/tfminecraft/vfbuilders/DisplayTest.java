@@ -55,6 +55,7 @@ class DisplayTest {
     assertEquals(64, loc.getY());
     assertTrue(StationTimerDisplay.formatText(null, 60).contains("Vehicle"));
     assertTrue(StationTimerDisplay.formatText("boat", 1, "war").contains("Paused: §7war"));
+    assertTrue(StationTimerDisplay.formatText("boat", 1).endsWith("\n§7Right-click to manage"));
   }
 
   @Test

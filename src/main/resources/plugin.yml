@@ -16,3 +16,6 @@ permissions:
   vfbuilders.reload:
     description: Reload VFBuilders config, stations, categories, and blueprints
     default: op
+  vfbuilders.cancel.others:
+    description: Cancel another player's vehicle construction from the station menu
+    default: op
