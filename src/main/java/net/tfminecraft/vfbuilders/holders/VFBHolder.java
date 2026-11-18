@@ -4,23 +4,22 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 
 import net.tfminecraft.vfbuilders.core.ActiveStation;
-import net.tfminecraft.vfbuilders.core.Blueprint;
 import net.tfminecraft.vfbuilders.enums.VFBGUI;
 
 public class VFBHolder implements InventoryHolder {
     private final ActiveStation station;
     private final VFBGUI type;
-    private final Blueprint build;
+    private final long buildId;
 
     public VFBHolder(ActiveStation station, VFBGUI type) {
-        this(station, type, null);
+        this(station, type, -1);
     }
 
-    /** {@code build} is the blueprint the station was building when this menu opened. */
-    public VFBHolder(ActiveStation station, VFBGUI type, Blueprint build) {
+    /** {@code buildId} is the station's build id when this menu opened; -1 for menus without a build. */
+    public VFBHolder(ActiveStation station, VFBGUI type, long buildId) {
         this.station = station;
         this.type = type;
-        this.build = build;
+        this.buildId = buildId;
     }
 
     public ActiveStation getStation() {
@@ -31,8 +30,8 @@ public class VFBHolder implements InventoryHolder {
         return type;
     }
 
-    public Blueprint getBuild() {
-        return build;
+    public long getBuildId() {
+        return buildId;
     }
 
     @Override

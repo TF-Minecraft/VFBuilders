@@ -267,7 +267,7 @@ public class StationManager implements Listener {
             new NamespacedKey(VFBuilders.plugin, "vfb_action"), PersistentDataType.STRING);
         if ("cancel".equals(action)) {
             if (buildStillCancellable(p, h)) {
-                inv.confirmCancelView(p, h.getStation(), h.getBuild(), isBuilder(p, h.getStation()));
+                inv.confirmCancelView(p, h.getStation(), h.getBuildId(), isBuilder(p, h.getStation()));
             }
             return;
         }
@@ -381,7 +381,7 @@ public class StationManager implements Listener {
     /** The menu's build is still running on a registered station and this player may cancel it. */
     private boolean buildStillCancellable(Player p, VFBHolder h) {
         ActiveStation station = h.getStation();
-        if (h.getBuild() != null && isRegistered(station) && station.getBlueprint() == h.getBuild()
+        if (h.getBuildId() == station.getBuildId() && isRegistered(station)
                 && station.isCancellable() && canCancel(p, station)) {
             return true;
         }

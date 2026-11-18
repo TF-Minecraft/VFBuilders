@@ -40,6 +40,7 @@ public class ActiveStation {
 
     private TextDisplay timerDisplay;
     private String freezeReason;
+    private long buildId;
 
     
     public ActiveStation(Location loc, Station stored) {
@@ -98,6 +99,7 @@ public class ActiveStation {
 
     public void selectBlueprint(Blueprint b, UUID constructorUuid, UUID constructorCharacterId) {
         blueprint = b;
+        buildId++;
         timeLeft = b.getTime();
         this.constructorUuid = constructorUuid;
         this.constructorCharacterId = constructorCharacterId;
@@ -346,6 +348,11 @@ public class ActiveStation {
     public boolean isConstructor(UUID account, UUID character) {
         return constructorUuid != null && constructorUuid.equals(account)
             && (constructorCharacterId == null || constructorCharacterId.equals(character));
+    }
+
+    /** Changes with every build started here, so a menu can tell its build from a later one. */
+    public long getBuildId() {
+        return buildId;
     }
 
     public String getFreezeReason() {

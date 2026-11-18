@@ -104,7 +104,7 @@ class CancelMenuTest {
     return s;
   }
 
-  InventoryClickEvent click(PlayerMock who, ActiveStation s, ItemStack item, VFBGUI type, Blueprint build) {
+  InventoryClickEvent click(PlayerMock who, ActiveStation s, ItemStack item, VFBGUI type, long build) {
     var e = mock(InventoryClickEvent.class, RETURNS_DEEP_STUBS);
     when(e.getView().getTopInventory().getHolder()).thenReturn(new VFBHolder(s, type, build));
     when(e.getWhoClicked()).thenReturn(who);
@@ -134,10 +134,10 @@ class CancelMenuTest {
     var s = building(player.getUniqueId());
     manager.stationInteract(rightClick(player));
     verify(menus).progressView(player, s, true, true);
-    manager.inventoryClick(click(player, s, action("cancel"), VFBGUI.PROGRESS, b));
-    verify(menus).confirmCancelView(player, s, b, true);
+    manager.inventoryClick(click(player, s, action("cancel"), VFBGUI.PROGRESS, s.getBuildId()));
+    verify(menus).confirmCancelView(player, s, s.getBuildId(), true);
     drain(player);
-    manager.inventoryClick(click(player, s, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, b));
+    manager.inventoryClick(click(player, s, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, s.getBuildId()));
     verify(b).give(player);
     verify(b, never()).drop(any());
     assertFalse(s.hasBlueprint());
@@ -151,10 +151,10 @@ class CancelMenuTest {
     staff.setOp(true);
     manager.stationInteract(rightClick(staff));
     verify(menus).progressView(staff, s, true, false);
-    manager.inventoryClick(click(staff, s, action("cancel"), VFBGUI.PROGRESS, b));
-    verify(menus).confirmCancelView(staff, s, b, false);
+    manager.inventoryClick(click(staff, s, action("cancel"), VFBGUI.PROGRESS, s.getBuildId()));
+    verify(menus).confirmCancelView(staff, s, s.getBuildId(), false);
     drain(staff);
-    manager.inventoryClick(click(staff, s, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, b));
+    manager.inventoryClick(click(staff, s, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, s.getBuildId()));
     verify(b).drop(block.getLocation().clone().add(0.5, 1, 0.5));
     verify(b, never()).give(any());
     assertFalse(s.hasBlueprint());
@@ -167,9 +167,9 @@ class CancelMenuTest {
     var stranger = server.addPlayer();
     manager.stationInteract(rightClick(stranger));
     verify(menus).progressView(stranger, s, false, false);
-    manager.inventoryClick(click(stranger, s, action("cancel"), VFBGUI.PROGRESS, b));
-    manager.inventoryClick(click(stranger, s, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, b));
-    verify(menus, never()).confirmCancelView(any(), any(), any(), anyBoolean());
+    manager.inventoryClick(click(stranger, s, action("cancel"), VFBGUI.PROGRESS, s.getBuildId()));
+    manager.inventoryClick(click(stranger, s, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, s.getBuildId()));
+    verify(menus, never()).confirmCancelView(any(), any(), anyLong(), anyBoolean());
     assertSame(b, s.getBlueprint());
     assertTrue(stranger.nextMessage().contains("can no longer be cancelled"));
   }
@@ -178,19 +178,22 @@ class CancelMenuTest {
   void staleMenusCannotCancelAnEndedReplacedOrRemovedBuild() {
     var s = building(player.getUniqueId());
     // A menu that never showed a build.
-    manager.inventoryClick(click(player, s, action("cancel"), VFBGUI.CATEGORY, null));
-    // The station now builds something else.
-    manager.inventoryClick(click(player, s, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, blueprint()));
+    manager.inventoryClick(click(player, s, action("cancel"), VFBGUI.CATEGORY, -1));
+    // The build ended and a new build of the same vehicle started at this station.
+    long old = s.getBuildId();
+    s.selectBlueprint(b, player.getUniqueId());
+    assertNotEquals(old, s.getBuildId());
+    manager.inventoryClick(click(player, s, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, old));
     // A station that is not registered any more.
     var removed = new ActiveStation(block.getLocation(), definition);
     removed.selectBlueprint(b, player.getUniqueId());
-    manager.inventoryClick(click(player, removed, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, b));
+    manager.inventoryClick(click(player, removed, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, removed.getBuildId()));
     // The timer ran out, so the vehicle is about to appear.
     s.setTimeLeft(0);
-    manager.inventoryClick(click(player, s, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, b));
+    manager.inventoryClick(click(player, s, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, s.getBuildId()));
     verify(b, never()).give(any());
     verify(b, never()).drop(any());
-    verify(menus, never()).confirmCancelView(any(), any(), any(), anyBoolean());
+    verify(menus, never()).confirmCancelView(any(), any(), anyLong(), anyBoolean());
     assertSame(b, s.getBlueprint());
     assertSame(b, removed.getBlueprint());
   }
@@ -199,7 +202,7 @@ class CancelMenuTest {
   void aFailedSaveKeepsTheBuildAndSaysSo() {
     var s = building(player.getUniqueId());
     database.when(() -> Database.saveStationsNow(anyMap())).thenReturn(false);
-    manager.inventoryClick(click(player, s, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, b));
+    manager.inventoryClick(click(player, s, action("confirm_cancel"), VFBGUI.CONFIRM_CANCEL, s.getBuildId()));
     assertSame(b, s.getBlueprint());
     verify(b, never()).give(any());
     assertTrue(player.nextMessage().contains("could not be cancelled"));
@@ -209,13 +212,13 @@ class CancelMenuTest {
   void backFromTheConfirmScreenReopensTheStationMenu() {
     var s = building(player.getUniqueId());
     var back = new ItemStack(Material.BARRIER);
-    manager.inventoryClick(click(player, s, back, VFBGUI.CONFIRM_CANCEL, b));
+    manager.inventoryClick(click(player, s, back, VFBGUI.CONFIRM_CANCEL, s.getBuildId()));
     verify(menus).progressView(player, s, true, true);
     s.cancelConstruction();
-    manager.inventoryClick(click(player, s, back, VFBGUI.CONFIRM_CANCEL, b));
+    manager.inventoryClick(click(player, s, back, VFBGUI.CONFIRM_CANCEL, s.getBuildId()));
     verify(menus).categoryView(null, player, s, true);
     var removed = new ActiveStation(block.getLocation(), definition);
-    manager.inventoryClick(click(player, removed, back, VFBGUI.CONFIRM_CANCEL, b));
+    manager.inventoryClick(click(player, removed, back, VFBGUI.CONFIRM_CANCEL, s.getBuildId()));
     verifyNoMoreInteractions(menus);
   }
 
@@ -299,6 +302,7 @@ class CancelMenuTest {
     void station() {
       when(s.getBlueprint()).thenReturn(b);
       when(s.getTimeLeft()).thenReturn(90);
+      when(s.getBuildId()).thenReturn(7L);
     }
 
     org.bukkit.inventory.Inventory top() {
@@ -318,7 +322,7 @@ class CancelMenuTest {
       real.progressView(player, s, true, true);
       var holder = (VFBHolder) top().getHolder();
       assertEquals(VFBGUI.PROGRESS, holder.getType());
-      assertSame(b, holder.getBuild());
+      assertEquals(7L, holder.getBuildId());
       var info = top().getItem(11);
       assertEquals("§eConstructing §6Boat", info.getItemMeta().getDisplayName());
       assertTrue(info.getItemMeta().getLore().toString().contains("Paused: §7war"));
@@ -354,10 +358,10 @@ class CancelMenuTest {
 
     @Test
     void theConfirmScreenHasYesAndABackBarrier() {
-      real.confirmCancelView(player, s, b, true);
+      real.confirmCancelView(player, s, 7L, true);
       var holder = (VFBHolder) top().getHolder();
       assertEquals(VFBGUI.CONFIRM_CANCEL, holder.getType());
-      assertSame(b, holder.getBuild());
+      assertEquals(7L, holder.getBuildId());
       assertEquals("confirm_cancel", action(top().getItem(11)));
       assertEquals(Material.BARRIER, top().getItem(15).getType());
       assertEquals("§aNo, keep building", top().getItem(15).getItemMeta().getDisplayName());

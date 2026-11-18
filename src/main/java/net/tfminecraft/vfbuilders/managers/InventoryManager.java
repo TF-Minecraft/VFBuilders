@@ -97,7 +97,7 @@ public class InventoryManager {
 	@SuppressWarnings("deprecation")
 	public void progressView(Player p, ActiveStation s, boolean canCancel, boolean builder) {
 		Blueprint b = s.getBlueprint();
-		Inventory i = VFBuilders.plugin.getServer().createInventory(new VFBHolder(s, VFBGUI.PROGRESS, b), 27, "§7Construction");
+		Inventory i = VFBuilders.plugin.getServer().createInventory(new VFBHolder(s, VFBGUI.PROGRESS, s.getBuildId()), 27, "§7Construction");
 		ItemStack info = b.getItem().clone();
 		ItemMeta m = info.getItemMeta();
 		m.setDisplayName("§eConstructing §6" + b.getVehicle().getName());
@@ -122,8 +122,8 @@ public class InventoryManager {
 	/** Asks for confirmation before cancelling; the barrier goes back to the progress view. */
 	// Keep the existing legacy text representation, formatting, and exact-string comparisons.
 	@SuppressWarnings("deprecation")
-	public void confirmCancelView(Player p, ActiveStation s, Blueprint build, boolean builder) {
-		Inventory i = VFBuilders.plugin.getServer().createInventory(new VFBHolder(s, VFBGUI.CONFIRM_CANCEL, build), 27, "§7Cancel this build?");
+	public void confirmCancelView(Player p, ActiveStation s, long buildId, boolean builder) {
+		Inventory i = VFBuilders.plugin.getServer().createInventory(new VFBHolder(s, VFBGUI.CONFIRM_CANCEL, buildId), 27, "§7Cancel this build?");
 		i.setItem(11, actionButton(Material.RED_WOOL, "§cYes, cancel the build", "confirm_cancel", builder));
 		ItemStack back = createBackButton();
 		ItemMeta m = back.getItemMeta();
