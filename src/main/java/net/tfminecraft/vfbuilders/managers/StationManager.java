@@ -248,8 +248,11 @@ public class StationManager implements Listener {
             if(h.getType().equals(VFBGUI.BLUEPRINT)) {
                 inv.categoryView(null, p, h.getStation(), true);
             } else if (h.getType().equals(VFBGUI.CONFIRM_CANCEL)) {
-                if (isRegistered(h.getStation())) openStationMenu(p, h.getStation());
-                else p.closeInventory();
+                // Views change on the next tick, not inside the click event.
+                Bukkit.getScheduler().runTask(VFBuilders.plugin, () -> {
+                    if (isRegistered(h.getStation())) openStationMenu(p, h.getStation());
+                    else p.closeInventory();
+                });
             }
             p.playSound(p, Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1f);
             return;
@@ -266,13 +269,19 @@ public class StationManager implements Listener {
         String action = m.getPersistentDataContainer().get(
             new NamespacedKey(VFBuilders.plugin, "vfb_action"), PersistentDataType.STRING);
         if ("cancel".equals(action)) {
-            if (buildStillCancellable(p, h)) {
-                inv.confirmCancelView(p, h.getStation(), h.getBuildId(), isBuilder(p, h.getStation()));
-            }
+            Bukkit.getScheduler().runTask(VFBuilders.plugin, () -> {
+                if (buildStillCancellable(p, h)) {
+                    inv.confirmCancelView(p, h.getStation(), h.getBuildId(), isBuilder(p, h.getStation()));
+                }
+            });
             return;
         }
         if ("confirm_cancel".equals(action)) {
-            if (buildStillCancellable(p, h)) cancelFromMenu(p, h.getStation());
+            Bukkit.getScheduler().runTask(VFBuilders.plugin, () -> {
+                p.closeInventory();
+                // Checked after the close, so close listeners cannot change what is cancelled.
+                if (buildStillCancellable(p, h)) cancelFromMenu(p, h.getStation());
+            });
             return;
         }
         key = new NamespacedKey(VFBuilders.plugin, "vfb_blueprint_id");
@@ -391,7 +400,6 @@ public class StationManager implements Listener {
     }
 
     private void cancelFromMenu(Player p, ActiveStation station) {
-        p.closeInventory();
         Blueprint blueprint = station.getBlueprint();
         UUID account = station.getConstructorUuid();
         boolean builder = isBuilder(p, station);

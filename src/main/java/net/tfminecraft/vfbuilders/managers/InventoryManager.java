@@ -109,6 +109,7 @@ public class InventoryManager {
 		} else {
 			lore.add("§aFinished: the vehicle appears when a player is near.");
 		}
+		lore.add("§8Reopen to refresh.");
 		m.setLore(lore);
 		info.setItemMeta(m);
 		i.setItem(11, info);
