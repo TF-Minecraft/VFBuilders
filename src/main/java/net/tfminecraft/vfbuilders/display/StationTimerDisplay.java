@@ -54,7 +54,7 @@ public final class StationTimerDisplay {
 		if (freezeReason != null) {
 			text += "\n§cPaused: §7" + freezeReason;
 		}
-		return text;
+		return text + "\n§7Right-click to manage";
 	}
 
 	public static TextDisplay spawn(World world, Location stationBlock, String text) {
